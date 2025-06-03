@@ -1,0 +1,120 @@
+---
+- name: Configure base system
+  block:
+    - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Set hostname if provided"
+      ansible.builtin.hostname:
+        name: "{{ hostname }}.k3s.internal"
+      when: hostname | length > 0
+
+    - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Ensure hostname resolves in /etc/hosts"
+      ansible.builtin.lineinfile:
+        path: /etc/hosts
+        regexp: '.*\s{{ hostname }}$'
+        line: "{{ ansible_host }} {{ hostname }}.k3s.internal {{ hostname }}"
+        state: present
+        create: yes
+        backup: yes
+      when:
+        - hostname is defined
+        - ansible_host is defined
+        - hostname | length > 0
+        - ansible_host is match("^[0-9]{1,3}(\\.[0-9]{1,3}){3}$")
+
+    - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Ensure system packages are updated"
+      ansible.builtin.dnf:
+        name: "*"
+        state: latest
+        update_cache: true
+      when: update_system_packages
+
+    - name: Install required packages
+      ansible.builtin.dnf:
+        name:
+          - curl
+          - wget
+          - net-tools
+          - iproute
+          - iptables
+          - conntrack
+          - socat
+          - nfs-utils
+          - openssl
+          - dbus
+          - firewalld
+          - chrony
+          - kmod
+        state: present
+
+    - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Ensure required kernel modules are loaded"
+      community.general.modprobe:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - br_netfilter
+        - overlay
+
+    - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Set sysctl parameters for Kubernetes networking"
+      ansible.posix.sysctl:
+        name: "{{ item.key }}"
+        value: "{{ item.value }}"
+        reload: yes
+        state: present
+      loop:
+        - { key: 'net.bridge.bridge-nf-call-ip6tables', value: 1 }
+        - { key: 'net.bridge.bridge-nf-call-iptables', value: 1 }
+        - { key: 'net.ipv4.ip_forward', value: 1 }
+
+    - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Set SELinux to permissive (optional)"
+      ansible.posix.selinux:
+        state: permissive
+        policy: targeted
+      when: disable_selinux
+
+    - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Disable swap"
+      ansible.builtin.command: swapoff -a
+      when: disable_swap
+
+    - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Remove swap entry from /etc/fstab"
+      ansible.builtin.replace:
+        path: /etc/fstab
+        regexp: '^(\S+\s+\S+\s+swap\s+.*)$'
+        replace: '# \1'
+      when: disable_swap
+
+    - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Ensure chronyd is running"
+      ansible.builtin.service:
+        name: chronyd
+        state: started
+        enabled: true
+
+    - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Mask nm-cloud-setup.service if present"
+      ansible.builtin.systemd:
+        name: nm-cloud-setup.service
+        enabled: false
+        masked: true
+      ignore_errors: true
+
+    - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Conditionally include firewalld tasks"
+      include_tasks: firewalld.yml
+      when: configure_firewall
+
+    - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Check if cgroups v2 is enabled"
+      ansible.builtin.command: stat -fc %T /sys/fs/cgroup
+      register: cgroup_status
+      changed_when: false
+
+    - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Enable cgroups v2 if not already enabled"
+      ansible.builtin.command: grubby --update-kernel=ALL --args="systemd.unified_cgroup_hierarchy=1"
+      when: enable_cgroups_v2 and cgroup_status.stdout != "cgroup2fs"
+      notify: Reboot to apply cgroups v2
+
+    - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Warn if cgroups v2 is not enabled (reboot required)"
+      ansible.builtin.debug:
+        msg: "сgroup2 is not active yet — change applied, reboot scheduled via handler"
+      when: enable_cgroups_v2 and cgroup_status.stdout != "cgroup2fs"
+
+    - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Conditionally include disk tasks"
+      include_tasks: additional_disk_device.yml
+      when: additional_disk_device is defined
+  become: true
+  delegate_to: "{{ ansible_host }}"

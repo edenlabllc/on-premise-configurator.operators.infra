@@ -1,0 +1,37 @@
+---
+# Use the 'create api' subcommand to add watches to this file.
+- version: v1alpha1
+  group: config.onprem.edenlab.io
+  kind: K3SRemoteMachine
+  finalizer:
+    name: config.onprem.edenlab.io/finalizer
+    role: k3s_node_finalizer
+  manageStatus: true
+  playbook: playbooks/k3s_remote_machine.yml
+  reconcilePeriod: '0'
+  vars:
+    ansible_user: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.sshUser }}"
+    ansible_host: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.address }}"
+    # Prepare additional Disk
+    additional_disk_device: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.additionalDiskDevice }}"
+    additional_disk_formatted: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.additionalDiskFormatted | default(false) }}"
+    additional_disk_fstype: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.additionalDiskFSType | default('ext4') }}"
+    additional_disk_mount: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.additionalDiskMount | default(false) }}"
+    additional_disk_mount_path: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.additionalDiskMountPath | default('/var/lib/k3s') }}"
+    # Prepare OS
+    hostname: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.hostname }}"
+    configure_firewall: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.configureFirewall | default(true) }}"
+    disable_selinux: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.disableSelinux | default(true) }}"
+    disable_swap: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.disableSwap | default(true) }}"
+    update_system_packages: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.updateSystemPackages | default(true) }}"
+    enable_cgroups_v2: true
+    # K3s
+    k3s_version: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.k3sVersion }}"
+    k3s_role: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.k3sRole }}"
+    k3s_init_server: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.k3sInitServer | default(false) }}"
+    k3s_prefix_secret_ref: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.k3sPrefixSecretRef }}"
+    k3s_сonfig_file: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.k3sConfigFile }}"
+    k3s_allowed_cluster_cidr: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.k3sAllowedClusterCIDR }}"
+    k3s_allowed_service_cidr: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.k3sAllowedServiceCIDR }}"
+  watchDependentResources: true
+# +kubebuilder:scaffold:watch

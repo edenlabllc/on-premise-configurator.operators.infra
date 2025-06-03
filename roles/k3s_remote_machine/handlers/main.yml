@@ -1,0 +1,4 @@
+---
+- name: Reboot to apply cgroups v2
+  ansible.builtin.reboot:
+    reboot_timeout: 600
