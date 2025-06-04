@@ -1,11 +1,11 @@
 ---
 galaxy_info:
-  author: @anovikov-el @apanasiuk-el
+  author: "@anovikov-el @apanasiuk-el"
   description: >
     Ansible role for installing and configuring a K3s server or agent node on on-premise infrastructure.
     Supports detection of existing installations, configuration management, installation from official script,
     and extraction of bootstrap kubeconfig and token on the initial control-plane node.
-  company: Edenlab LLC
+  company: "Edenlab LLC"
 
   # If the issue tracker for your role is not on github, uncomment the
   # next line and provide a value

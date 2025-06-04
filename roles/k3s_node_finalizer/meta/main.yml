@@ -1,12 +1,12 @@
 ---
 galaxy_info:
-  author: @anovikov-el @apanasiuk-el
+  author: "@anovikov-el @apanasiuk-el"
   description: >
     Ansible role for cleanly uninstalling a K3s server or agent node from an on-premise machine.
     The role detects and executes the appropriate uninstall script based on the node's role
     (server or agent), and provides debug output if the script is not found.
     Intended for controlled decommissioning of K3s nodes in a cluster environment.
-  company: Edenlab LLC
+  company: "Edenlab LLC"
 
   # If the issue tracker for your role is not on github, uncomment the
   # next line and provide a value
