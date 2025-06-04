@@ -1,0 +1,62 @@
+- name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Start and enable firewalld"
+  ansible.builtin.service:
+    name: firewalld
+    state: started
+    enabled: true
+  when: configure_firewall
+
+- name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Open required Kubernetes ports in firewalld"
+  ansible.posix.firewalld:
+    port: "{{ item }}"
+    permanent: true
+    immediate: true
+    state: enabled
+  loop:
+    - 10250/tcp
+    - 2379-2382/tcp
+    - 30000-32767/tcp
+    - 5001/tcp
+    - 51820/udp
+    - 51821/udp
+    - 6443/tcp
+    - 6444/tcp
+    - 8472/udp
+    - 9345/tcp
+  when: configure_firewall
+
+- name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Enable masquerading for Kubernetes"
+  ansible.posix.firewalld:
+    masquerade: yes
+    permanent: true
+    immediate: true
+    state: enabled
+  when: configure_firewall
+
+- name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Allow default CIDRs"
+  ansible.posix.firewalld:
+    source: "{{ item }}"
+    zone: trusted
+    state: enabled
+    permanent: true
+    immediate: true
+  loop:
+    - "{{ k3s_allowed_cluster_cidr | default('10.42.0.0/16') }}"
+    - "{{ k3s_allowed_service_cidr | default('10.43.0.0/16') }}"
+
+- name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Ensure required system services are allowed in firewalld"
+  ansible.posix.firewalld:
+    service: "{{ item }}"
+    permanent: true
+    immediate: true
+    state: enabled
+  loop:
+    - ssh
+    - dhcpv6-client
+    - cockpit
+  when: configure_firewall
+
+- name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Reload firewalld"
+  ansible.builtin.service:
+    name: firewalld
+    state: reloaded
+  when: configure_firewall

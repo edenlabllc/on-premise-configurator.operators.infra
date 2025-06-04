@@ -1,0 +1,38 @@
+apiVersion: config.onprem.edenlab.io/v1alpha1
+kind: RemoteMachine
+metadata:
+  labels:
+    app.kubernetes.io/name: on-premise-configurator
+    app.kubernetes.io/managed-by: kustomize
+  name: server-02
+spec:
+  # SSH
+  sshUser: ec2-user
+  sshUserDisablePassword: true
+  # Prepare OS additional disk
+#  additionalDiskDevice: "/dev/nvme1n1"
+#  additionalDiskFormatted: true
+#  additionalDiskMount: true
+#  additionalDiskFSType: "ext4"
+#  additionalDiskMountPath: "/data/k3s"
+  # Prepare OS
+  address: 51.21.56.17
+  hostname: server-02
+  configureFirewall: true
+  disableSelinux: true
+  disableSwap: true
+  updateSystemPackages: true
+  # K3s
+  k3sVersion: "v1.31.8+k3s1"
+  k3sPrefixSecretRef: "k3s-cluster"
+  k3sInitServer: false
+  k3sRole: server
+  k3sConfigFile: |
+    data-dir: /var/lib/rancher/k3s        
+    node-name: server-02  
+    tls-san:
+      - 13.61.47.205
+      - 51.21.56.17
+      - 56.228.40.74
+    write-kubeconfig-mode: "0644"
+    server: https://172.31.1.61:6443
