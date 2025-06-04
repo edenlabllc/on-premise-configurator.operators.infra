@@ -8,7 +8,7 @@
     role: k3s_node_finalizer
   manageStatus: true
   playbook: playbooks/k3s_remote_machine.yml
-  reconcilePeriod: '0'
+  reconcilePeriod: 30s
   vars:
     ansible_user: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.sshUser }}"
     ansible_host: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.address }}"
