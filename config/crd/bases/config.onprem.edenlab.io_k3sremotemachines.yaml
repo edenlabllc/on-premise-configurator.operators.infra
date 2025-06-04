@@ -13,6 +13,10 @@ spec:
   scope: Namespaced
   versions:
   - name: v1alpha1
+    additionalPrinterColumns:
+    - name: PHASE
+      type: string
+      jsonPath: .status.phase
     schema:
       openAPIV3Schema:
         description: K3SRemoteMachine is the Schema for the k3sremotemachines API
