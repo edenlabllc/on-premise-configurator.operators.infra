@@ -2,9 +2,9 @@
 galaxy_info:
   author: "@anovikov-el @apanasiuk-el"
   description: >
-    Ansible role for installing and configuring a K3s server or agent node on on-premise infrastructure.
-    Supports detection of existing installations, configuration management, installation from official script,
-    and extraction of bootstrap kubeconfig and token on the initial control-plane node.
+    An Ansible role for safely updating the 'phase' field in the status of a Kubernetes Custom Resource
+    managed by an Ansible-based Operator. The role ensures idempotent phase transitions by comparing the
+    current and target phases and allows updates only if the transition is explicitly permitted.
   company: "Edenlab LLC"
 
   # If the issue tracker for your role is not on github, uncomment the
