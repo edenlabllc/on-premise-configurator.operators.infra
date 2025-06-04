@@ -37,6 +37,3 @@ spec:
     # Taints example:
     node-taint:
       - key=mongodb:NoSchedule
-
-
-#    default-local-storage-path: ""

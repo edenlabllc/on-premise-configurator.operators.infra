@@ -42,6 +42,3 @@ spec:
       - 56.228.40.74
     write-kubeconfig-mode: "0644"
     cluster-init: true
-
-
-#    default-local-storage-path: ""

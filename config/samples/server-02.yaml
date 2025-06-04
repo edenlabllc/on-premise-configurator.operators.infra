@@ -36,6 +36,3 @@ spec:
       - 56.228.40.74
     write-kubeconfig-mode: "0644"
     server: https://172.31.1.61:6443
-
-
-#    default-local-storage-path: ""

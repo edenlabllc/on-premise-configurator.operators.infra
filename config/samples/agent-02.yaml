@@ -36,6 +36,3 @@ spec:
     node-label:
       - svccontroller.k3s.cattle.io/lbpool=pool1
       - svccontroller.k3s.cattle.io/enablelb=true
-
-
-#    default-local-storage-path: ""
