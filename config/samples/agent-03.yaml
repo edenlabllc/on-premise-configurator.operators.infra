@@ -4,11 +4,11 @@ metadata:
   labels:
     app.kubernetes.io/name: on-premise-configurator
     app.kubernetes.io/managed-by: kustomize
-  name: server-03
+  name: agent-03
 spec:
   # SSH
   sshUser: ec2-user
-  address: 10.1.0.3
+  address: 10.1.0.7
   # Prepare OS additional disk
   additionalDiskDevice: ""
   additionalDiskFormatted: false
@@ -38,17 +38,15 @@ spec:
   # k3sSelinuxRPM: k3s-selinux-1.6-1.el9.noarch.rpm
   # k3sSelinuxRPMURL: https://github.com/k3s-io/k3s-selinux/releases/download/v1.6.latest.1
 
-  k3sRole: server
+  k3sRole: agent
   k3sInitServer: false
-  k3sHAMode: true
+#  k3sHAMode: true
   k3sPrefixSecretRef: k3s-cluster
   k3sVersion: "v1.31.9+k3s1"
   #   This is now an inner yaml file. Maintain the indentation.
   #   YAML here will be placed as the content of /etc/rancher/k3s/config.yaml
   #   See https://docs.k3s.io/installation/configuration#configuration-file
-  k3sServerConfigYAML: |
-    node-taint:
-      - node-role.kubernetes.io/control-plane=:NoSchedule
+  # k3sServerConfigYAML: |
   #   Same as server_config_yaml, but for the agent nodes.
   #   YAML here will be placed as the content of /etc/rancher/k3s/config.yaml
   #   See https://docs.k3s.io/installation/configuration#configuration-file

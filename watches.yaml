@@ -5,33 +5,59 @@
   kind: K3SRemoteMachine
   finalizer:
     name: config.onprem.edenlab.io/finalizer
-    role: k3s_node_finalizer
+    role: k3s_reset
   manageStatus: true
   playbook: playbooks/k3s_remote_machine.yml
-  reconcilePeriod: 30s
+  reconcilePeriod: 300s
   vars:
+    # Ansible config
     ansible_user: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.sshUser }}"
     ansible_host: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.address }}"
-    # Prepare additional Disk
-    additional_disk_device: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.additionalDiskDevice }}"
+    ansible_python_interpreter: /usr/bin/python3
+    ansible_ssh_common_args: '-o ControlMaster=no -o ControlPersist=no -o ControlPath=none'
+    ansible_ssh_private_key_file: /opt/ssh/id_rsa
+    hostname: "{{ ansible_operator_meta.name }}"
+    # Prepare OS
+    additional_disk_device: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.additionalDiskDevice | default('') }}"
     additional_disk_formatted: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.additionalDiskFormatted | default(false) }}"
     additional_disk_fstype: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.additionalDiskFSType | default('ext4') }}"
     additional_disk_mount: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.additionalDiskMount | default(false) }}"
-    additional_disk_mount_path: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.additionalDiskMountPath | default('/var/lib/k3s') }}"
-    # Prepare OS
-    hostname: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.hostname }}"
-    configure_firewall: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.configureFirewall | default(true) }}"
-    disable_selinux: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.disableSelinux | default(true) }}"
-    disable_swap: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.disableSwap | default(true) }}"
-    update_system_packages: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.updateSystemPackages | default(true) }}"
-    enable_cgroups_v2: true
+    additional_disk_mount_path: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.additionalDiskMountPath | default('/var/lib/rancher/k3s')}}"
+    # The token should be a random string of reasonable length. You can generate
+    # one with the following commands:
+    # - openssl rand -base64 64
+    # - pwgen -s 64 1
+    # You can use ansible-vault to encrypt this value / keep it secret.
+    # Or you can omit it if not using Vagrant and let the first server automatically generate one.
+    token: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.token | default('') }}"
+    use_external_database: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.useExternalDatabase | default(false) }}"
     # K3s
-    k3s_version: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.k3sVersion }}"
-    k3s_role: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.k3sRole }}"
+    # Optional vars
+    k3s_airgap: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.k3sAirGapEnabled | default(false) }}"
+    k3s_airgap_artifact_url: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.k3sAirGapArtifactURL | default('https://github.com/k3s-io/k3s/releases/download') }}"
+    k3s_airgap_dir: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.k3sAirGapDir | default('/opt/airgap-k3s') }}"
+    k3s_selinux_rpm: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.k3sSelinuxRPM | default('k3s-selinux-1.6-1.el9.noarch.rpm') }}"
+    k3s_selinux_rpm_url: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.k3sSelinuxRPMURL | default('https://github.com/k3s-io/k3s-selinux/releases/download/v1.6.latest.1') }}"
+
+    k3s_api_endpoint: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.k3sApiEndpoint | default('') }}"
+    k3s_api_port: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.k3sApiPort | default(6443) }}"
+
+    k3s_extra_agent_args: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.k3sExtraAgentArgs | default('') }}"
+    k3s_extra_server_args: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.k3sExtraServerArgs | default('') }}"
+    k3s_extra_service_envs: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.k3sExtraServiceEnvs | default([]) }}"
+
+    k3s_ha_mode: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.k3sHAMode | default(false) }}"
+    k3s_role: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.k3sRole | default('server') }}"
     k3s_init_server: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.k3sInitServer | default(false) }}"
-    k3s_prefix_secret_ref: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.k3sPrefixSecretRef }}"
-    k3s_сonfig_file: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.k3sConfigFile }}"
-    k3s_allowed_cluster_cidr: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.k3sAllowedClusterCIDR }}"
-    k3s_allowed_service_cidr: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.k3sAllowedServiceCIDR }}"
+    k3s_prefix_secret_ref: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.k3sPrefixSecretRef | default('k3s-cluster') }}"
+
+    k3s_agent_config_yaml: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.k3sAgentConfigYAML | default('') }}"
+    k3s_server_config_yaml: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.k3sServerConfigYAML | default('') }}"
+    k3s_registries_config_yaml: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.k3sRegistriesConfigYAML | default('') }}"
+
+    k3s_server_location_delete_protect: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.k3sServerLocationDeleteProtect | default(false) }}"
+    k3s_server_location: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.k3sServerLocation | default('/var/lib/rancher/k3s') }}"
+    k3s_systemd_dir: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.k3sSystemdDir | default('/etc/systemd/system') }}"
+    k3s_version: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.k3sVersion | default('') }}"
   watchDependentResources: true
 # +kubebuilder:scaffold:watch

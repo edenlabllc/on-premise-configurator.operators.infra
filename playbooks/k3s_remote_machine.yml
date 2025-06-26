@@ -12,14 +12,23 @@
             new_phase: "Installing"
             expected_previous_phase: ["", "Failed"]
             new_message: "Starting K3S remote machine configuration"
+            new_ready_status: false
 
-        - name: Run K3S remote machine role
-          import_role:
-            name: k3s_remote_machine
+        - name: Get global facts
+          ansible.builtin.import_role:
+            name: get_facts
           vars:
-            ansible_python_interpreter: /usr/bin/python3
-            ansible_ssh_common_args: '-o ControlMaster=no -o ControlPersist=no -o ControlPath=none'
-            ansible_ssh_private_key_file: /opt/ssh/id_rsa
+            ansible_connection: ssh
+
+        - block:
+            - name: Run K3S remote machine prereq role
+              ansible.builtin.import_role:
+                name: prereq
+
+            - name: Run K3S remote machine airgap role
+              ansible.builtin.import_role:
+                name: airgap
+          vars:
             ansible_connection: ssh
 
         # Get token from secret if not init server
@@ -28,44 +37,57 @@
             api_version: v1
             kind: Secret
             name: "{{ k3s_prefix_secret_ref }}-token-secret"
-            namespace: "{{ _config_onprem_edenlab_io_k3sremotemachine.metadata.namespace }}"
+            namespace: "{{ ansible_operator_meta.namespace }}"
           register: k3s_token_secret
           delegate_to: localhost
           run_once: true
-          when: not k3s_init_server | default(false)
+          when: not k3s_init_server
 
-        - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Set token fact from secret"
+        - name: "Set token fact from secret"
+          when: not k3s_init_server
           ansible.builtin.set_fact:
             k3s_token: "{{ (k3s_token_secret.resources[0].data.token | b64decode) | default('') }}"
-          when: not k3s_init_server | default(false)
 
-        - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Set definition token fact"
+        - name: "Set definition token fact"
+          when: k3s_init_server
           ansible.builtin.set_fact:
-            k3s_token: ""
-          when: k3s_init_server | default(false)
+            k3s_token: "{{ token | default('') }}"
 
-        - name: Run K3S node role
-          import_role:
-            name: k3s_node
+        - block:
+            - name: Run K3S server role
+              when: k3s_role == 'server'
+              ansible.builtin.import_role:
+                name: k3s_server
+
+            - name: Run K3S agent role
+              when: k3s_role == 'agent'
+              ansible.builtin.import_role:
+                name: k3s_agent
           vars:
-            ansible_python_interpreter: /usr/bin/python3
-            ansible_ssh_common_args: '-o ControlMaster=no -o ControlPersist=no -o ControlPath=none'
-            ansible_ssh_private_key_file: /opt/ssh/id_rsa
             ansible_connection: ssh
             k3s_token: "{{ k3s_token }}"
 
         - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Copy kubeconfig from remote to local"
+          when:
+            - k3s_role == 'server'
+            - k3s_init_server
           set_fact:
             k3s_kubeconfig_local: "{{ hostvars[inventory_hostname]['k3s_kubeconfig'] | default('Not defined') }}"
           run_once: true
 
         - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Copy token from remote to local"
+          when:
+            - k3s_role == 'server'
+            - k3s_init_server
           set_fact:
             k3s_token_local: "{{ hostvars[inventory_hostname]['k3s_token'] | default('Not defined') }}"
           run_once: true
 
         # If this is the first server, store kubeconfig to secret
         - name: Create secret with kubeconfig
+          when:
+            - k3s_role == 'server'
+            - k3s_init_server
           kubernetes.core.k8s:
             state: present
             definition:
@@ -73,15 +95,17 @@
               kind: Secret
               metadata:
                 name: "{{ k3s_prefix_secret_ref }}-kubeconfig-secret"
-                namespace: "{{ _config_onprem_edenlab_io_k3sremotemachine.metadata.namespace }}"
+                namespace: "{{ ansible_operator_meta.namespace }}"
               stringData:
-                token: "{{ k3s_kubeconfig_local }}"
-          when: k3s_init_server | default(false)
+                kubeconfig: "{{ k3s_kubeconfig_local }}"
           delegate_to: localhost
           run_once: true
 
         # If this is the first server, store token to secret
         - name: Create secret with token
+          when:
+            - k3s_role == 'server'
+            - k3s_init_server
           kubernetes.core.k8s:
             state: present
             definition:
@@ -89,10 +113,9 @@
               kind: Secret
               metadata:
                 name: "{{ k3s_prefix_secret_ref }}-token-secret"
-                namespace: "{{ _config_onprem_edenlab_io_k3sremotemachine.metadata.namespace }}"
+                namespace: "{{ ansible_operator_meta.namespace }}"
               stringData:
                 token: "{{ k3s_token_local }}"
-          when: k3s_init_server | default(false)
           delegate_to: localhost
           run_once: true
 
@@ -103,6 +126,7 @@
             new_phase: "Ready"
             expected_previous_phase: ["Failed", "Installing"]
             new_message: "K3S node successfully configured"
+            new_ready_status: true
 
       rescue:
         - name: Set phase to "Failed"
@@ -112,3 +136,4 @@
             new_phase: "Failed"
             expected_previous_phase: ["Installing", "Ready"]
             new_message: "An error occurred during K3S setup"
+            new_ready_status: false
