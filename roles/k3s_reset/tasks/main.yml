@@ -1,0 +1,49 @@
+---
+- name: Undo cluster setup
+  block:
+    - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Run K3S Uninstall script [server]"
+      when: k3s_role == 'server'
+      ansible.builtin.command:
+        cmd: k3s-uninstall.sh
+        removes: /var/lib/rancher/k3s/*
+
+    - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Run K3S Uninstall script [agent]"
+      when: k3s_role == 'agent'
+      ansible.builtin.command:
+        cmd: k3s-agent-uninstall.sh
+        removes: /var/lib/rancher/k3s/*
+
+    - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Remove user kubeconfig"
+      ansible.builtin.file:
+        path: ~{{ ansible_user }}/.kube/config
+        state: absent
+
+    - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Remove K3S install script"
+      ansible.builtin.file:
+        path: /usr/local/bin/k3s-install.sh
+        state: absent
+
+    - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Remove contents of K3S server location"
+      when:
+       - k3s_server_location is defined and k3s_server_location | length > 0
+       - not k3s_server_location_delete_protect
+      ansible.builtin.shell:
+        cmd: "rm -rf {{ k3s_server_location }}/*"
+        removes: "{{ k3s_server_location }}/*"
+
+    - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Remove K3S config"
+      when: server_config_yaml is defined and server_config_yaml | length > 0
+      ansible.builtin.file:
+        path: /etc/rancher/k3s/config.yaml
+        state: absent
+
+    - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Remove K3S commands from ~/.bashrc"
+      when: k3s_role == 'server'
+      ansible.builtin.lineinfile:
+        path: "~{{ ansible_user }}/.bashrc"
+        search_string: "Added by k3s-ansible-operator"
+        state: absent
+  vars:
+    ansible_connection: ssh
+  become: true
+  delegate_to: "{{ ansible_host }}"

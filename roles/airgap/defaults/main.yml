@@ -1,0 +1,7 @@
+---
+k3s_airgap: false
+k3s_airgap_dir: /opt/airgap-k3s
+k3s_airgap_artifact_url: https://github.com/k3s-io/k3s/releases/download
+k3s_selinux_rpm: k3s-selinux-1.6-1.el9.noarch.rpm
+k3s_selinux_rpm_url: https://github.com/k3s-io/k3s-selinux/releases/download/v1.6.latest.1
+k3s_systemd_dir: /etc/systemd/system

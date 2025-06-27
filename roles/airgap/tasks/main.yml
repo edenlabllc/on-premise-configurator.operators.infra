@@ -1,0 +1,158 @@
+---
+- name: Check airgap artifacts
+  when: k3s_airgap
+  block:
+    - name: Verify Ansible meets airgap version requirements.
+      ansible.builtin.assert:
+        that: "ansible_version.full is version_compare('2.12', '>=')"
+        msg: "The Airgap role requires at least ansible-core 2.12"
+
+    - name: Determine architecture and set k3s_arch
+      ansible.builtin.set_fact:
+        k3s_arch: "{{ 'arm64' if ansible_architecture == 'aarch64' else 'arm' if ansible_architecture == 'armv7l' else 'amd64' }}"
+        k3s_binary: "{{ 'k3s-arm64' if ansible_architecture == 'aarch64' else 'k3s-arm' if ansible_architecture == 'armv7l' else 'k3s' }}"
+        k3s_airgap_image: "{{ 'k3s-airgap-images-arm64.tar.gz' if ansible_architecture == 'aarch64' else 'k3s-airgap-images-arm.tar.gz' if ansible_architecture == 'armv7l' else 'k3s-airgap-images-amd64.tar.gz' }}"
+        k3s_artifact_version_url: "{{ k3s_version | replace('+', '%2B') }}"
+
+    - name: Download K3S install script
+      become: false
+      # Workaround for https://github.com/ansible/ansible/issues/64016
+      when: installed_k3s_version is undefined or ( installed_k3s_version is defined and installed_k3s_version is version(k3s_version, '<') )
+      ansible.builtin.get_url:
+        url: https://get.k3s.io/
+        timeout: 120
+        dest: "{{ k3s_airgap_dir }}/k3s-install.sh"
+        mode: "0755"
+        force: true
+
+    - name: Download K3S binary
+      become: false
+      when: installed_k3s_version is undefined or ( installed_k3s_version is defined and installed_k3s_version is version(k3s_version, '<') )
+      ansible.builtin.get_url:
+        url: "{{ k3s_airgap_artifact_url }}/{{ k3s_artifact_version_url }}/{{ k3s_binary }}"
+        timeout: 120
+        dest: "{{ k3s_airgap_dir }}/{{ k3s_binary }}"
+        mode: "0755"
+        force: true
+
+    - name: Download K3S airgap image
+      become: false
+      when: installed_k3s_version is undefined or ( installed_k3s_version is defined and installed_k3s_version is version(k3s_version, '<') )
+      ansible.builtin.get_url:
+        url: "{{ k3s_airgap_artifact_url }}/{{ k3s_artifact_version_url }}/{{ k3s_airgap_image }}"
+        timeout: 120
+        dest: "{{ k3s_airgap_dir }}/{{ k3s_airgap_image }}"
+        mode: "0755"
+        force: true
+
+    - name: Download K3S SELinux RPM
+      become: false
+      when: ansible_os_family == 'RedHat'
+      ansible.builtin.get_url:
+        url: "{{ k3s_selinux_rpm_url }}/{{ k3s_selinux_rpm }}"
+        timeout: 120
+        dest: "{{ k3s_airgap_dir }}/{{ k3s_selinux_rpm }}"
+        mode: "0755"
+  delegate_to: localhost
+  run_once: true
+  vars:
+    ansible_connection: local
+
+- name: Airgap install
+  when: k3s_airgap
+  block:
+    - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Distribute K3S install script"
+      when: installed_k3s_version is undefined or ( installed_k3s_version is defined and installed_k3s_version is version(k3s_version, '<') )
+      ansible.builtin.copy:
+        src: "{{ airgap_dir }}/k3s-install.sh"
+        dest: /usr/local/bin/k3s-install.sh
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Distribute K3S binary {{ k3s_arch }}"
+      when: installed_k3s_version is undefined or ( installed_k3s_version is defined and installed_k3s_version is version(k3s_version, '<') )
+      ansible.builtin.copy:
+        src: "{{ item }}"
+        dest: /usr/local/bin/k3s
+        owner: root
+        group: root
+        mode: "0755"
+      with_first_found:
+        - files:
+            - "{{ airgap_dir }}/k3s-{{ k3s_arch }}"
+            - "{{ airgap_dir }}/k3s"
+          # with_first_found always runs, even inside the when block
+          # so we need to skip it if the file is not found
+          skip: true
+
+    - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Distribute K3S SELinux RPM"
+      ansible.builtin.copy:
+        src: "{{ item }}"
+        dest: /tmp/
+        owner: root
+        group: root
+        mode: "0755"
+      with_fileglob:
+        - "{{ airgap_dir }}/k3s-selinux*.rpm"
+      register: selinux_copy
+      ignore_errors: true
+
+    - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Install K3S SELinux RPM"
+      when:
+        - ansible_os_family == 'RedHat'
+        - selinux_copy.skipped is false
+      failed_when: false
+      ansible.builtin.dnf:
+        name: "{{ selinux_copy.results[0].dest }}"
+        state: present
+        disable_gpg_check: true
+        disablerepo: "*"
+
+    - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Make images directory"
+      ansible.builtin.file:
+        path: "/var/lib/rancher/k3s/agent/images/"
+        mode: "0755"
+        state: directory
+
+    - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Distribute K3S images {{ k3s_arch }}"
+      when: installed_k3s_version is undefined or ( installed_k3s_version is defined and installed_k3s_version is version(k3s_version, '<') )
+      ansible.builtin.copy:
+        src: "{{ item }}"
+        dest: /var/lib/rancher/k3s/agent/images/{{ item | basename }}
+        owner: root
+        group: root
+        mode: "0755"
+      with_first_found:
+        - files:
+            - "{{ airgap_dir }}/k3s-airgap-images-{{ k3s_arch }}.tar.zst"
+            - "{{ airgap_dir }}/k3s-airgap-images-{{ k3s_arch }}.tar.gz"
+            - "{{ airgap_dir }}/k3s-airgap-images-{{ k3s_arch }}.tar"
+          # with_first_found always runs, even inside the when block
+          # so we need to skip it if the file is not found
+          skip: true
+
+    - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Run K3S Install [server]"
+      when:
+        - k3s_role == 'server'
+        - installed_k3s_version is undefined or ( installed_k3s_version is defined and installed_k3s_version is version(k3s_version, '<') )
+      ansible.builtin.command:
+        cmd: /usr/local/bin/k3s-install.sh
+      environment:
+        INSTALL_K3S_SKIP_ENABLE: "true"
+        INSTALL_K3S_SKIP_DOWNLOAD: "true"
+      changed_when: true
+
+    - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Run K3S Install [agent]"
+      when:
+        - k3s_role == 'agent'
+        - installed_k3s_version is undefined or ( installed_k3s_version is defined and installed_k3s_version is version(k3s_version, '<') )
+      ansible.builtin.command:
+        cmd: /usr/local/bin/k3s-install.sh
+      environment:
+        INSTALL_K3S_SKIP_ENABLE: "true"
+        INSTALL_K3S_SKIP_DOWNLOAD: "true"
+        INSTALL_K3S_EXEC: "agent"
+      changed_when: true
+  become: true
+  delegate_to: "{{ ansible_host }}"

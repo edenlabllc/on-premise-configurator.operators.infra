@@ -17,6 +17,18 @@ spec:
     - name: PHASE
       type: string
       jsonPath: .status.phase
+    - name: READY
+      type: string
+      jsonPath: .status.ready
+    - name: USER
+      type: string
+      jsonPath: .spec.sshUser
+    - name: VERSION
+      type: string
+      jsonPath: .spec.k3sVersion
+    - name: AGE
+      type: date
+      jsonPath: .metadata.creationTimestamp
     schema:
       openAPIV3Schema:
         description: K3SRemoteMachine is the Schema for the k3sremotemachines API
