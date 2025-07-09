@@ -54,4 +54,38 @@ rules:
       - patch
       - update
       - watch
+  ##
+  ## Rules for config.onprem.edenlab.io/v1alpha1, Kind: K3SCluster
+  ##
+  - apiGroups:
+      - config.onprem.edenlab.io
+    resources:
+      - k3sclusters
+      - k3sclusters/status
+      - k3sclusters/finalizers
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  ##
+  ## Rules for config.onprem.edenlab.io/v1alpha1, Kind: K3SControlPlane
+  ##
+  - apiGroups:
+      - config.onprem.edenlab.io
+    resources:
+      - k3scontrolplanes
+      - k3scontrolplanes/status
+      - k3scontrolplanes/finalizers
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
 # +kubebuilder:scaffold:rules

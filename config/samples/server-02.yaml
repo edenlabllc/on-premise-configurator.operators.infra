@@ -1,6 +1,9 @@
 apiVersion: config.onprem.edenlab.io/v1alpha1
 kind: K3SRemoteMachine
 metadata:
+  annotations:
+    ansible.sdk.operatorframework.io/verbosity: "0"
+    ansible.sdk.operatorframework.io/reconcile-period: 120s
   labels:
     app.kubernetes.io/name: on-premise-configurator
     app.kubernetes.io/managed-by: kustomize
@@ -21,6 +24,7 @@ spec:
   # Or you can omit it if not using Vagrant and let the first server automatically generate one.
   # token: ""
   # useExternalDatabase: false
+  providerID: ""
   # K3s
   # Optional vars
   k3sApiEndpoint: 10.1.0.2

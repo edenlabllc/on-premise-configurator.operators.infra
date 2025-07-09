@@ -3,4 +3,6 @@
 # It should be run by config/default
 resources:
 - bases/config.onprem.edenlab.io_k3sremotemachines.yaml
+- bases/config.onprem.edenlab.io_k3sclusters.yaml
+- bases/config.onprem.edenlab.io_k3scontrolplanes.yaml
 # +kubebuilder:scaffold:crdkustomizeresource

@@ -1,0 +1,16 @@
+---
+- name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Ensure flannel checksum offload rule is persisted via udev"
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/udev/rules.d/90-flannel.rules
+    content: |
+      SUBSYSTEM=="net", ACTION=="add|change|move", ENV{INTERFACE}=="flannel.1", RUN+="/usr/sbin/ethtool -K flannel.1 tx-checksum-ip-generic off"
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Trigger udev to apply flannel offload rule"
+  become: true
+  ansible.builtin.command:
+    cmd: udevadm trigger --subsystem-match=net --action=change
+  changed_when: false

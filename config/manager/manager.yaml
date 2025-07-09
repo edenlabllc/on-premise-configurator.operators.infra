@@ -62,6 +62,9 @@ spec:
           - --leader-elect
           - --leader-election-id=on-premise-configurator
           - --health-probe-bind-address=:6789
+          - --max-concurrent-reconciles=20
+          - --ansible-log-events=Tasks
+          - --ansible-verbosity=0
         image: controller:latest
         imagePullPolicy: Never
         name: manager
@@ -91,7 +94,7 @@ spec:
         resources:
           limits:
             cpu: 1000m
-            memory: 1024Mi
+            memory: 2048Mi
           requests:
             cpu: 10m
             memory: 256Mi

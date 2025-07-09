@@ -132,10 +132,15 @@
           # so we need to skip it if the file is not found
           skip: true
 
+    - name: Check if remote K3S uninstaller script exists
+      ansible.builtin.stat:
+        path: /usr/local/bin/k3s-uninstall.sh
+      register: k3s_uninstall_script
+
     - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Run K3S Install [server]"
       when:
         - k3s_role == 'server'
-        - installed_k3s_version is undefined or ( installed_k3s_version is defined and installed_k3s_version is version(k3s_version, '<') )
+        - installed_k3s_version is undefined or (installed_k3s_version is defined and installed_k3s_version is version(k3s_version, '<')) or not k3s_uninstall_script.stat.exists
       ansible.builtin.command:
         cmd: /usr/local/bin/k3s-install.sh
       environment:
@@ -146,7 +151,7 @@
     - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Run K3S Install [agent]"
       when:
         - k3s_role == 'agent'
-        - installed_k3s_version is undefined or ( installed_k3s_version is defined and installed_k3s_version is version(k3s_version, '<') )
+        - installed_k3s_version is undefined or (installed_k3s_version is defined and installed_k3s_version is version(k3s_version, '<')) or not k3s_uninstall_script.stat.exists
       ansible.builtin.command:
         cmd: /usr/local/bin/k3s-install.sh
       environment:

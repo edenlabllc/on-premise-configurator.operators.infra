@@ -1,0 +1,12 @@
+apiVersion: config.onprem.edenlab.io/v1alpha1
+kind: K3SCluster
+metadata:
+  annotations:
+    ansible.sdk.operatorframework.io/verbosity: "0"
+    ansible.sdk.operatorframework.io/reconcile-period: 120s
+  labels:
+    app.kubernetes.io/name: on-premise-configurator
+    app.kubernetes.io/managed-by: kustomize
+  name: k3scluster-sample
+spec:
+  k3sVersion: "v1.31.9+k3s1"
