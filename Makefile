@@ -121,6 +121,11 @@ deploy: kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/c
 	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
 	$(KUSTOMIZE) build config/default | kubectl apply -f -
 
+.PHONY: generate
+generate: kustomize ## Generate infrastructure components manifests.
+	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
+	mkdir -p dist && $(KUSTOMIZE) build config/default > dist/infrastructure-components.yaml
+
 .PHONY: undeploy
 undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config.
 	$(KUSTOMIZE) build config/default | kubectl delete --ignore-not-found=$(ignore-not-found) -f -

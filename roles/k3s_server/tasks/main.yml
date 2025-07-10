@@ -99,18 +99,6 @@
             line: "K3S_TOKEN={{ k3s_token }}"
           when: k3s_token is defined and k3s_token | length > 0
 
-        - name: TEST RESTART
-          debug:
-            msg: "service_file_ha.changed - {{ service_file_ha.changed }}"
-
-        - name: TEST RESTART
-          debug:
-            msg: "service_file_single.changed - {{ service_file_single.changed }}"
-
-        - name: TEST RESTART
-          debug:
-            msg: "_server_config_result.changed - {{ _server_config_result.changed }}"
-
         - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Restart K3S service"
           when:
             - ansible_facts.services['k3s.service'] is defined
@@ -249,5 +237,23 @@
           retries: 20
           delay: 3
           changed_when: false
+
+    - name: Disable Flannel checksum offload and persist via udev if needed
+      block:
+        - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Check if tx-checksum-ip-generic is already off on flannel.1"
+          ansible.builtin.command:
+            cmd: ethtool -k flannel.1
+          register: ethtool_output
+          changed_when: false
+          failed_when: false
+
+        - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Disable tx-checksum-ip-generic on flannel.1 if needed"
+          ansible.builtin.command:
+            cmd: ethtool -K flannel.1 tx-checksum-ip-generic off
+          when: "'tx-checksum-ip-generic: on' in ethtool_output.stdout"
+          changed_when: true
+          notify:
+            - Ensure flannel checksum offload rule is persisted via udev
+            - Trigger udev to apply flannel offload rule
   become: true
   delegate_to: "{{ ansible_host }}"

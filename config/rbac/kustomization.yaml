@@ -22,6 +22,12 @@ resources:
 # default, aiding admins in cluster management. Those roles are
 # not used by the {{ .ProjectName }} itself. You can comment the following lines
 # if you do not want those helpers be installed with your Project.
+- k3scontrolplane_admin_role.yaml
+- k3scontrolplane_editor_role.yaml
+- k3scontrolplane_viewer_role.yaml
+- k3scluster_admin_role.yaml
+- k3scluster_editor_role.yaml
+- k3scluster_viewer_role.yaml
 - k3sremotemachine_admin_role.yaml
 - k3sremotemachine_editor_role.yaml
 - k3sremotemachine_viewer_role.yaml

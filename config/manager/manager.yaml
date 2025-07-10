@@ -62,8 +62,11 @@ spec:
           - --leader-elect
           - --leader-election-id=on-premise-configurator
           - --health-probe-bind-address=:6789
+          - --max-concurrent-reconciles=20
+          - --ansible-log-events=Tasks
+          - --ansible-verbosity=0
         image: controller:latest
-        imagePullPolicy: Never
+        imagePullPolicy: IfNotPresent
         name: manager
         env:
         - name: ANSIBLE_GATHERING
@@ -91,29 +94,31 @@ spec:
         resources:
           limits:
             cpu: 1000m
-            memory: 1024Mi
+            memory: 2048Mi
           requests:
             cpu: 10m
             memory: 256Mi
         volumeMounts:
-          - mountPath: /opt/ansible/playbooks
-            name: playbooks
-          - mountPath: /opt/ansible/roles
-            name: roles
+# Uncomment during development.
+#          - mountPath: /opt/ansible/playbooks
+#            name: playbooks
+#          - mountPath: /opt/ansible/roles
+#            name: roles
           - name: ssh-key
             mountPath: /opt/ssh
             readOnly: true
       volumes:
-        - name: roles
-          hostPath:
-            path: /mnt/k3d/node/roles
-            type: DirectoryOrCreate
-        - name: playbooks
-          hostPath:
-            path: /mnt/k3d/node/playbooks
-            type: DirectoryOrCreate
+# Uncomment during development.
+#        - name: roles
+#          hostPath:
+#            path: /mnt/k3d/node/roles
+#            type: DirectoryOrCreate
+#        - name: playbooks
+#          hostPath:
+#            path: /mnt/k3d/node/playbooks
+#            type: DirectoryOrCreate
         - name: ssh-key
           secret:
-            secretName: ssh-private-key
+            secretName: onprem-ssh-private-key
       serviceAccountName: controller-manager
       terminationGracePeriodSeconds: 10

@@ -80,5 +80,23 @@
         daemon_reload: "{{ true if k3s_agent_service.changed else false }}"
         state: "{{ 'restarted' if (k3s_agent_service.changed or _agent_config_result.changed) else 'started' }}"
         enabled: true
+
+    - name: Disable Flannel checksum offload and persist via udev if needed
+      block:
+        - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Check if tx-checksum-ip-generic is already off on flannel.1"
+          ansible.builtin.command:
+            cmd: ethtool -k flannel.1
+          register: ethtool_output
+          changed_when: false
+          failed_when: false
+
+        - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Disable tx-checksum-ip-generic on flannel.1 if needed"
+          ansible.builtin.command:
+            cmd: ethtool -K flannel.1 tx-checksum-ip-generic off
+          when: "'tx-checksum-ip-generic: on' in ethtool_output.stdout"
+          changed_when: true
+          notify:
+            - Ensure flannel checksum offload rule is persisted via udev
+            - Trigger udev to apply flannel offload rule
   become: true
   delegate_to: "{{ ansible_host }}"

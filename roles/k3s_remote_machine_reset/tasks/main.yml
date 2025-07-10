@@ -1,5 +1,17 @@
 ---
-- name: Undo cluster setup
+- name: Set phase to "Uninstalling". K3SRemoteMachine resource
+  ansible.builtin.import_role:
+    name: operator_status
+  vars:
+    k3s_resource_kind: K3SRemoteMachine
+    new_phase: "Uninstalling"
+    expected_previous_phase: ["Installed", "Failed"]
+    new_message: "Uninstalling K3S and reverting remote machine configuration"
+    new_ready_status: false
+  delegate_to: localhost
+  run_once: true
+
+- name: Undo K3S remote machine setup
   block:
     - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Run K3S Uninstall script [server]"
       when: k3s_role == 'server'
@@ -42,6 +54,11 @@
       ansible.builtin.lineinfile:
         path: "~{{ ansible_user }}/.bashrc"
         search_string: "Added by k3s-ansible-operator"
+        state: absent
+
+    - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Remove flannel udev rule if present"
+      ansible.builtin.file:
+        path: /etc/udev/rules.d/90-flannel.rules
         state: absent
   vars:
     ansible_connection: ssh

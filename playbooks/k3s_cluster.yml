@@ -1,0 +1,78 @@
+---
+- name: Configure cluster through operator
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+    - block:
+        - name: Set phase to "Provisioning". K3SCluster resource
+          ansible.builtin.import_role:
+            name: operator_status
+          vars:
+            k3s_resource_kind: K3SCluster
+            new_phase: "Provisioning"
+            expected_previous_phase: ["", "Failed"]
+            new_message: "Validating K3SRemoteMachine and K3SControlPlane readiness"
+            new_ready_status: false
+
+        - name: Get K3S cluster nodes status
+          kubernetes.core.k8s_info:
+            api_version: config.onprem.edenlab.io/v1alpha1
+            kind: K3SRemoteMachine
+            namespace: "{{ ansible_operator_meta.namespace }}"
+          register: k3s_remote_machines
+          delegate_to: localhost
+
+        - name: Get K3S control plane status
+          kubernetes.core.k8s_info:
+            api_version: config.onprem.edenlab.io/v1alpha1
+            kind: K3SControlPlane
+            namespace: "{{ ansible_operator_meta.namespace }}"
+          register: k3s_control_plane
+          delegate_to: localhost
+
+        - name: K3S cluster nodes not ready
+          fail:
+            msg: >-
+              Not all K3SRemoteMachine resources are ready.
+              Resources not ready: {{
+                k3s_remote_machines.resources | default([])
+                | selectattr('status.ready', 'defined')
+                | rejectattr('status.ready', 'equalto', true)
+                | map(attribute='metadata.name')
+                | list
+              }}
+          when: k3s_remote_machines.resources | default([]) | selectattr('status.ready', 'equalto', false) | list | length > 0
+
+        - name: K3S cluster control plane not ready
+          fail:
+            msg: >-
+              Not all K3SControlPlane resources are ready.
+              Resources not ready: {{
+                k3s_control_plane.resources | default([])
+                | selectattr('status.ready', 'defined')
+                | rejectattr('status.ready', 'equalto', true)
+                | map(attribute='metadata.name')
+                | list
+              }}
+          when: k3s_control_plane.resources | default([]) | selectattr('status.ready', 'equalto', false) | list | length > 0
+
+        - name: Set phase to "Provisioned". K3SCluster resource
+          ansible.builtin.import_role:
+            name: operator_status
+          vars:
+            k3s_resource_kind: K3SCluster
+            new_phase: "Provisioned"
+            expected_previous_phase: ["Failed", "Provisioning"]
+            new_message: "All K3S cluster components are ready"
+            new_ready_status: true
+      rescue:
+        - name: Set phase to "Failed". K3SCluster resource
+          ansible.builtin.import_role:
+            name: operator_status
+          vars:
+            k3s_resource_kind: K3SCluster
+            new_phase: "Failed"
+            expected_previous_phase: ["Provisioning", "Provisioned"]
+            new_message: "Validation failed: some cluster components are not ready"
+            new_ready_status: false

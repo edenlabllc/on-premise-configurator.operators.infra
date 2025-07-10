@@ -1,0 +1,66 @@
+---
+- name: Set phase to "Destroying". K3SControlPlane resource
+  ansible.builtin.import_role:
+    name: operator_status
+  vars:
+    k3s_resource_kind: K3SControlPlane
+    new_phase: "Destroying"
+    expected_previous_phase: ["Provisioned", "Failed"]
+    new_message: "Destroying K3S control plane and cleaning up cluster resources"
+    new_ready_status: false
+    new_initialized: false
+  delegate_to: localhost
+  run_once: true
+
+- name: Undo K3S control plane setup
+  block:
+    - name: Retrieve K3S kubeconfig from secret
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Secret
+        name: "{{ k3s_prefix_secret_ref }}-kubeconfig"
+        namespace: "{{ ansible_operator_meta.namespace }}"
+      register: k3s_kubeconfig
+
+    - name: Decode kubeconfig from secret
+      when: k3s_kubeconfig.resources | default([]) | length > 0
+      ansible.builtin.set_fact:
+        remote_kubeconfig_content: "{{ k3s_kubeconfig.resources[0].data.value | b64decode }}"
+
+    - name: Write kubeconfig to file
+      when: remote_kubeconfig_content is defined
+      ansible.builtin.copy:
+        content: "{{ remote_kubeconfig_content }}"
+        dest: "/tmp/remote_kubeconfig.yaml"
+        mode: '0600'
+
+    - name: Try accessing Kubernetes API to test availability
+      when: remote_kubeconfig_content is defined
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Namespace
+        kubeconfig: /tmp/remote_kubeconfig.yaml
+      register: kube_api_check
+      failed_when: false
+      changed_when: false
+
+    - name: Fail if remote Kubernetes API is still reachable
+      fail:
+        msg: >-
+          Finalizer cannot proceed: Kubernetes API server still reachable via kubeconfig.
+          Response contains {{ kube_api_check.resources | length }} namespaces.
+      when: kube_api_check.resources is defined and kube_api_check.resources | length > 0
+
+    - name: Cleanup temporary kubeconfig file
+      file:
+        path: /tmp/remote_kubeconfig.yaml
+        state: absent
+      delegate_to: localhost
+      when: remote_kubeconfig_content is defined
+  delegate_to: localhost
+  rescue:
+    - name: Defer finalizer retry, log error
+      debug:
+        msg: >-
+          Finalizer encountered an issue or remote cluster is unreachable.
+          Will retry on next reconciliation.

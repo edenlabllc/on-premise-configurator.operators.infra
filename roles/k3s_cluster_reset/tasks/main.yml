@@ -1,0 +1,55 @@
+---
+- name: Set phase to "Destroying". K3SCluster resource
+  ansible.builtin.import_role:
+    name: operator_status
+  vars:
+    k3s_resource_kind: K3SCluster
+    new_phase: "Destroying"
+    expected_previous_phase: ["Provisioned", "Failed"]
+    new_message: "Destroying K3S cluster and dependent resources"
+    new_ready_status: false
+  delegate_to: localhost
+  run_once: true
+
+- name: Undo K3S cluster setup
+  block:
+    - name: Get K3S cluster nodes status
+      kubernetes.core.k8s_info:
+        api_version: config.onprem.edenlab.io/v1alpha1
+        kind: K3SRemoteMachine
+        namespace: "{{ ansible_operator_meta.namespace }}"
+      register: k3s_remote_machines
+      failed_when: false
+      changed_when: false
+
+    - name: Get K3S control plane status
+      kubernetes.core.k8s_info:
+        api_version: config.onprem.edenlab.io/v1alpha1
+        kind: K3SControlPlane
+        namespace: "{{ ansible_operator_meta.namespace }}"
+      register: k3s_control_plane
+      failed_when: false
+      changed_when: false
+
+    - name: K3S cluster nodes uninstalled
+      fail:
+        msg: >-
+          Finalizer cannot proceed. K3SRemoteMachine resources still exist:
+          {{
+            k3s_remote_machines.resources | map(attribute='metadata.name') | list
+          }}
+      when: k3s_remote_machines.resources | default([]) | length > 0
+
+    - name: K3S cluster control plane destroyed
+      fail:
+        msg: >-
+          Finalizer cannot proceed. K3SControlPlane resources still exist:
+          {{
+            k3s_control_plane.resources | map(attribute='metadata.name') | list
+          }}
+      when: k3s_control_plane.resources | default([]) | length > 0
+  delegate_to: localhost
+  rescue:
+    - name: Defer finalizer retry, log error
+      debug:
+        msg: "Finalizer blocked due to existing dependent resources. Will retry."

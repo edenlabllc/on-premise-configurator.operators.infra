@@ -17,4 +17,18 @@ resources:
   group: config
   kind: K3SRemoteMachine
   version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: true
+  domain: onprem.edenlab.io
+  group: config
+  kind: K3SCluster
+  version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: true
+  domain: onprem.edenlab.io
+  group: config
+  kind: K3SControlPlane
+  version: v1alpha1
 version: "3"

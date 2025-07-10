@@ -2,13 +2,44 @@
 # Use the 'create api' subcommand to add watches to this file.
 - version: v1alpha1
   group: config.onprem.edenlab.io
+  kind: K3SCluster
+  finalizer:
+    name: config.onprem.edenlab.io/finalizer
+    role: k3s_cluster_reset
+  manageStatus: true
+  playbook: playbooks/k3s_cluster.yml
+# 'reconcilePeriod' is set via an annotation on the Custom Resource: 'ansible.sdk.operatorframework.io/reconcile-period'.
+#  reconcilePeriod: 120s
+  vars:
+    k3s_version: "{{ _config_onprem_edenlab_io_k3scluster.spec.k3sVersion | default('') }}"
+  watchDependentResources: true
+
+- version: v1alpha1
+  group: config.onprem.edenlab.io
+  kind: K3SControlPlane
+  finalizer:
+    name: config.onprem.edenlab.io/finalizer
+    role: k3s_control_plane_reset
+  manageStatus: true
+  playbook: playbooks/k3s_control_plane.yml
+# 'reconcilePeriod' is set via an annotation on the Custom Resource: 'ansible.sdk.operatorframework.io/reconcile-period'.
+#  reconcilePeriod: 120s
+  vars:
+    k3s_ha_mode: "{{ _config_onprem_edenlab_io_k3scontrolplane.spec.k3sHAMode | default(false) }}"
+    k3s_version: "{{ _config_onprem_edenlab_io_k3scontrolplane.spec.k3sVersion | default('') }}"
+    k3s_prefix_secret_ref: "{{ _config_onprem_edenlab_io_k3scontrolplane.spec.k3sPrefixSecretRef | default('k3s-cluster') }}"
+  watchDependentResources: true
+
+- version: v1alpha1
+  group: config.onprem.edenlab.io
   kind: K3SRemoteMachine
   finalizer:
     name: config.onprem.edenlab.io/finalizer
-    role: k3s_reset
+    role: k3s_remote_machine_reset
   manageStatus: true
   playbook: playbooks/k3s_remote_machine.yml
-  reconcilePeriod: 300s
+# 'reconcilePeriod' is set via an annotation on the Custom Resource: 'ansible.sdk.operatorframework.io/reconcile-period'.
+#  reconcilePeriod: 120s
   vars:
     # Ansible config
     ansible_user: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.sshUser }}"
