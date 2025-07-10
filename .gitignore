@@ -5,6 +5,7 @@
 *.so
 *.dylib
 bin
+dist
 
 # editor and IDE paraphernalia
 .DS_Store

@@ -66,7 +66,7 @@ spec:
           - --ansible-log-events=Tasks
           - --ansible-verbosity=0
         image: controller:latest
-        imagePullPolicy: Never
+        imagePullPolicy: IfNotPresent
         name: manager
         env:
         - name: ANSIBLE_GATHERING
@@ -99,22 +99,24 @@ spec:
             cpu: 10m
             memory: 256Mi
         volumeMounts:
-          - mountPath: /opt/ansible/playbooks
-            name: playbooks
-          - mountPath: /opt/ansible/roles
-            name: roles
+# Uncomment during development.
+#          - mountPath: /opt/ansible/playbooks
+#            name: playbooks
+#          - mountPath: /opt/ansible/roles
+#            name: roles
           - name: ssh-key
             mountPath: /opt/ssh
             readOnly: true
       volumes:
-        - name: roles
-          hostPath:
-            path: /mnt/k3d/node/roles
-            type: DirectoryOrCreate
-        - name: playbooks
-          hostPath:
-            path: /mnt/k3d/node/playbooks
-            type: DirectoryOrCreate
+# Uncomment during development.
+#        - name: roles
+#          hostPath:
+#            path: /mnt/k3d/node/roles
+#            type: DirectoryOrCreate
+#        - name: playbooks
+#          hostPath:
+#            path: /mnt/k3d/node/playbooks
+#            type: DirectoryOrCreate
         - name: ssh-key
           secret:
             secretName: ssh-private-key
