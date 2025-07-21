@@ -17,7 +17,6 @@ on:
 env:
   # AWS region of the AWS account storing images in AWS ECR.
   CORE_AWS_REGION: eu-north-1
-  CONTAINER_REPOSITORY: public.ecr.aws/edenlabllc/core.on-premise-configurator.operators.infra
 
 jobs:
   gitflow-ci:
