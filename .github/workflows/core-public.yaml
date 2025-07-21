@@ -70,3 +70,4 @@ jobs:
           image_scan: false
           release_artifacts: |
             dist/infrastructure-components.yaml
+            metadata.yaml
