@@ -1,0 +1,62 @@
+---
+- name: Get current status of the custom resource
+  kubernetes.core.k8s_info:
+    api_version: config.onprem.edenlab.io/v1alpha1
+    kind: "{{ k3s_resource_kind }}"
+    name: "{{ ansible_operator_meta.name }}"
+    namespace: "{{ ansible_operator_meta.namespace }}"
+  register: current_cr_status
+
+- name: Extract current phase
+  set_fact:
+    current_phase: "{{ current_cr_status.resources[0].status.phase | default('') }}"
+
+- name: Set phase '{{ new_phase }}' if it differs from the current one
+  operator_sdk.util.k8s_status:
+    api_version: config.onprem.edenlab.io/v1alpha1
+    kind: "{{ k3s_resource_kind }}"
+    name: "{{ ansible_operator_meta.name }}"
+    namespace: "{{ ansible_operator_meta.namespace }}"
+    status:
+      phase: "{{ new_phase }}"
+      message: "{{ new_message | default(omit) }}"
+      ready: "{{ new_ready_status }}"
+      observedGeneration: "{{ new_observed_generation_status | default(omit) }}"
+  when:
+    - current_phase != new_phase
+    - expected_previous_phase is defined
+    - current_phase in expected_previous_phase
+    - k3s_resource_kind == 'K3SRemoteMachine'
+
+- name: Set phase '{{ new_phase }}' if it differs from the current one cluster
+  operator_sdk.util.k8s_status:
+    api_version: config.onprem.edenlab.io/v1alpha1
+    kind: "{{ k3s_resource_kind }}"
+    name: "{{ ansible_operator_meta.name }}"
+    namespace: "{{ ansible_operator_meta.namespace }}"
+    status:
+      phase: "{{ new_phase }}"
+      message: "{{ new_message | default(omit) }}"
+      ready: "{{ new_ready_status }}"
+  when:
+    - current_phase != new_phase
+    - expected_previous_phase is defined
+    - current_phase in expected_previous_phase
+    - k3s_resource_kind == 'K3SCluster'
+
+- name: Set phase '{{ new_phase }}' if it differs from the current one control plane
+  operator_sdk.util.k8s_status:
+    api_version: config.onprem.edenlab.io/v1alpha1
+    kind: "{{ k3s_resource_kind }}"
+    name: "{{ ansible_operator_meta.name }}"
+    namespace: "{{ ansible_operator_meta.namespace }}"
+    status:
+      phase: "{{ new_phase }}"
+      message: "{{ new_message | default(omit) }}"
+      ready: "{{ new_ready_status }}"
+      initialized: "{{ new_initialized }}"
+  when:
+    - current_phase != new_phase
+    - expected_previous_phase is defined
+    - current_phase in expected_previous_phase
+    - k3s_resource_kind == 'K3SControlPlane'

@@ -1,0 +1,163 @@
+---
+- name: Configure remote machine through operator
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+    - name: Get current status of the K3SRemoteMachine resource
+      kubernetes.core.k8s_info:
+        api_version: config.onprem.edenlab.io/v1alpha1
+        kind: K3SRemoteMachine
+        name: "{{ ansible_operator_meta.name }}"
+        namespace: "{{ ansible_operator_meta.namespace }}"
+      register: k3s_remote_machine_cr_status
+      failed_when: false
+
+    - name: Determine if CR changed
+      set_fact:
+        k3s_cr_needs_reprocessing: "{{ (k3s_remote_machine_cr_status.resources[0].metadata.generation | int) > (k3s_remote_machine_cr_status.resources[0].status.observedGeneration | default(0) | int) }}"
+
+    - name: Extract current phase
+      set_fact:
+        k3s_remote_machine_phase: "{{ k3s_remote_machine_cr_status.resources[0].status.phase | default('') }}"
+
+    - block:
+        - name: Set phase to "Installing". K3SRemoteMachine resource
+          ansible.builtin.import_role:
+            name: operator_status
+          vars:
+            k3s_resource_kind: K3SRemoteMachine
+            new_phase: "Installing"
+            expected_previous_phase: ["", "Failed"]
+            new_message: "Starting K3S remote machine configuration"
+            new_ready_status: false
+
+        - name: Get global facts
+          ansible.builtin.import_role:
+            name: get_facts
+          vars:
+            ansible_connection: ssh
+
+        - block:
+            - name: Run K3S remote machine prereq role
+              ansible.builtin.import_role:
+                name: prereq
+
+            - name: Run K3S remote machine airgap role
+              ansible.builtin.import_role:
+                name: airgap
+          when: k3s_remote_machine_phase not in ["Installed", "Uninstalled"] or k3s_cr_needs_reprocessing
+          vars:
+            ansible_connection: ssh
+
+        # Get token from secret if not init server
+        - name: Retrieve k3s token from secret
+          kubernetes.core.k8s_info:
+            api_version: v1
+            kind: Secret
+            name: "{{ k3s_prefix_secret_ref }}-token-secret"
+            namespace: "{{ ansible_operator_meta.namespace }}"
+          register: k3s_token_secret
+          delegate_to: localhost
+          run_once: true
+          when: not k3s_init_server
+
+        - name: "Set token fact from secret"
+          when: not k3s_init_server
+          ansible.builtin.set_fact:
+            k3s_token: "{{ (k3s_token_secret.resources[0].data.token | b64decode) | default('') }}"
+
+        - name: "Set definition token fact"
+          when: k3s_init_server
+          ansible.builtin.set_fact:
+            k3s_token: "{{ token | default('') }}"
+
+        - block:
+            - name: Run K3S server role
+              when: k3s_role == 'server'
+              ansible.builtin.import_role:
+                name: k3s_server
+
+            - name: Run K3S agent role
+              when: k3s_role == 'agent'
+              ansible.builtin.import_role:
+                name: k3s_agent
+          vars:
+            ansible_connection: ssh
+            k3s_token: "{{ k3s_token }}"
+
+        - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Copy kubeconfig from remote to local"
+          when:
+            - k3s_role == 'server'
+            - k3s_init_server
+          ansible.builtin.set_fact:
+            k3s_kubeconfig_local: "{{ hostvars[inventory_hostname]['k3s_kubeconfig'] | default('Not defined') }}"
+          run_once: true
+
+        - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Copy token from remote to local"
+          when:
+            - k3s_role == 'server'
+            - k3s_init_server
+          ansible.builtin.set_fact:
+            k3s_token_local: "{{ hostvars[inventory_hostname]['k3s_token'] | default('Not defined') }}"
+          run_once: true
+
+        # If this is the first server, store kubeconfig to secret
+        - name: Create secret with kubeconfig
+          when:
+            - k3s_role == 'server'
+            - k3s_init_server
+          kubernetes.core.k8s:
+            state: present
+            definition:
+              apiVersion: v1
+              kind: Secret
+              metadata:
+                labels:
+                  cluster.x-k8s.io/cluster-name: "{{ k3s_prefix_secret_ref }}"
+                name: "{{ k3s_prefix_secret_ref }}-kubeconfig"
+                namespace: "{{ ansible_operator_meta.namespace }}"
+              stringData:
+                value: "{{ k3s_kubeconfig_local }}"
+              type: cluster.x-k8s.io/secret
+          delegate_to: localhost
+          run_once: true
+
+        # If this is the first server, store token to secret
+        - name: Create secret with token
+          when:
+            - k3s_role == 'server'
+            - k3s_init_server
+          kubernetes.core.k8s:
+            state: present
+            definition:
+              apiVersion: v1
+              kind: Secret
+              metadata:
+                name: "{{ k3s_prefix_secret_ref }}-token-secret"
+                namespace: "{{ ansible_operator_meta.namespace }}"
+              stringData:
+                token: "{{ k3s_token_local }}"
+          delegate_to: localhost
+          run_once: true
+
+        - name: Set phase to "Ready". K3SRemoteMachine resource
+          ansible.builtin.import_role:
+            name: operator_status
+          vars:
+            k3s_resource_kind: K3SRemoteMachine
+            new_phase: "Installed"
+            expected_previous_phase: ["Failed", "Installing"]
+            new_message: "K3S node successfully configured"
+            new_ready_status: true
+            new_observed_generation_status: "{{ k3s_remote_machine_cr_status.resources[0].metadata.generation | default(0) | int }}"
+      rescue:
+        - name: Set phase to "Failed". K3SRemoteMachine resource
+          ansible.builtin.import_role:
+            name: operator_status
+          vars:
+            k3s_resource_kind: K3SRemoteMachine
+            new_phase: "Failed"
+            expected_previous_phase: ["Installing", "Installed"]
+            new_message: "An error occurred during K3S setup"
+            new_ready_status: false

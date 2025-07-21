@@ -1,0 +1,259 @@
+---
+- name: Setup K3S server
+  block:
+    # If airgapped, all K3s artifacts are already on the node.
+    # We should be downloading and installing the newer version only if we are in one of the following cases :
+    #   - we couldn't get k3s installed version in the first task of this role
+    #   - the installed version of K3s on the nodes is older than the requested version in ansible vars
+    - name: Download artifact only if needed
+      when:
+        - ansible_check_mode
+        - not k3s_airgap
+        - installed_k3s_version is undefined or ( installed_k3s_version is defined and installed_k3s_version is version(k3s_version, '<') )
+      block:
+        - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Download K3S install script"
+          ansible.builtin.get_url:
+            url: https://get.k3s.io/
+            timeout: 120
+            dest: /usr/local/bin/k3s-install.sh
+            owner: root
+            group: root
+            mode: "0755"
+
+        - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Download K3S binary"
+          ansible.builtin.command:
+            cmd: /usr/local/bin/k3s-install.sh
+          environment:
+            INSTALL_K3S_SKIP_START: "true"
+            INSTALL_K3S_VERSION: "{{ k3s_version }}"
+          changed_when: true
+
+    - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Add K3S autocomplete to user bashrc"
+      when: ansible_user is defined and ansible_user | length > 0
+      ansible.builtin.lineinfile:
+        path: "~{{ ansible_user }}/.bashrc"
+        regexp: '\.\s+<\(k3s completion bash\)'
+        line: ". <(k3s completion bash)  # Added by k3s-ansible-operator"
+
+    - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Setup optional config file"
+      when: k3s_server_config_yaml is defined and k3s_server_config_yaml | length > 0
+      block:
+        - name: Make config directory
+          ansible.builtin.file:
+            path: "/etc/rancher/k3s"
+            mode: "0755"
+            state: directory
+        - name: Copy config values
+          ansible.builtin.copy:
+            content: "{{ k3s_server_config_yaml }}"
+            dest: "/etc/rancher/k3s/config.yaml"
+            mode: "0644"
+          register: _server_config_result
+
+    - name: Init first server node
+      when:
+        - k3s_role == 'server'
+        - k3s_init_server
+      block:
+        - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Copy K3S service file [Single]"
+          when: not k3s_ha_mode
+          ansible.builtin.template:
+            src: "k3s-single.service.j2"
+            dest: "{{ k3s_systemd_dir }}/k3s.service"
+            owner: root
+            group: root
+            mode: "0644"
+          register: service_file_single
+
+        - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Copy K3s service file [HA]"
+          when:
+            - k3s_ha_mode
+            - not use_external_database
+          ansible.builtin.template:
+            src: "k3s-cluster-init.service.j2"
+            dest: "{{ k3s_systemd_dir }}/k3s.service"
+            owner: root
+            group: root
+            mode: "0644"
+          register: service_file_ha
+
+        - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Add service environment variables"
+          when: k3s_extra_service_envs is defined and k3s_extra_service_envs | length > 0
+          ansible.builtin.lineinfile:
+            path: "{{ k3s_systemd_dir }}/k3s.service.env"
+            line: "{{ item }}"
+          with_items: "{{ k3s_extra_service_envs }}"
+
+        - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Delete any existing token from the environment if different from the new one"
+          ansible.builtin.lineinfile:
+            state: absent
+            path: "{{ k3s_systemd_dir }}/k3s.service.env"
+            regexp: "^K3S_TOKEN=\\s*(?!{{ k3s_token | default('') | regex_escape }}\\s*$)"
+
+        # Add the token to the environment if it has been provided.
+        # Otherwise, let the first server create one on the first run.
+        - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Add token as an environment variable"
+          no_log: true # avoid logging the server token
+          ansible.builtin.lineinfile:
+            path: "{{ k3s_systemd_dir }}/k3s.service.env"
+            line: "K3S_TOKEN={{ k3s_token }}"
+          when: k3s_token is defined and k3s_token | length > 0
+
+        - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Restart K3S service"
+          when:
+            - ansible_facts.services['k3s.service'] is defined
+            - ansible_facts.services['k3s.service'].state == 'running'
+            - service_file_single.changed or service_file_ha.changed or _server_config_result.changed
+          ansible.builtin.systemd:
+            name: k3s
+            daemon_reload: true
+            state: restarted
+            enabled: true
+
+        - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Enable and check K3S service"
+          when: ansible_facts.services['k3s.service'] is not defined or ansible_facts.services['k3s.service'].state != 'running'
+          ansible.builtin.systemd:
+            name: k3s
+            daemon_reload: true
+            state: started
+            enabled: true
+
+        - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Pause to allow first server startup"
+          when: k3s_init_server
+          ansible.builtin.pause:
+            seconds: 10
+
+        - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Wait for kubeconfig to exist [server]"
+          ansible.builtin.wait_for:
+            path: /etc/rancher/k3s/k3s.yaml
+            timeout: 60
+
+        - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Read K3S kubeconfig from local file"
+          ansible.builtin.slurp:
+            src: /etc/rancher/k3s/k3s.yaml
+          register: raw_k3s_kubeconfig
+
+        - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Set K3S kubeconfig fact for current host"
+          when: raw_k3s_kubeconfig is defined
+          ansible.builtin.set_fact:
+            k3s_kubeconfig: >-
+              {{
+                (raw_k3s_kubeconfig.content | b64decode)
+                | regex_replace('server: https://[^:]+:6443', 'server: https://' ~ ansible_host ~ ':6443')
+              }}
+
+        - name: Get the token if randomly generated
+          when: token is not defined or token | length == 0
+          block:
+            - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Wait for token"
+              ansible.builtin.wait_for:
+                path: /var/lib/rancher/k3s/server/token
+
+            - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Read node-token from master"
+              ansible.builtin.slurp:
+                src: /var/lib/rancher/k3s/server/token
+              register: node_token
+
+            - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Store Master node-token"
+              ansible.builtin.set_fact:
+                k3s_token: "{{ node_token.content | b64decode | regex_replace('\n', '') }}"
+
+    - name: Start other server if any and verify status
+      when:
+        - k3s_role == 'server'
+        - not k3s_init_server
+      block:
+        - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Add service environment variables"
+          when: k3s_extra_service_envs is defined and k3s_extra_service_envs | length > 0
+          ansible.builtin.lineinfile:
+            path: "{{ k3s_systemd_dir }}/k3s.service.env"
+            line: "{{ item }}"
+          with_items: "{{ k3s_extra_service_envs }}"
+
+        - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Delete any existing token from the environment if different from the new one"
+          ansible.builtin.lineinfile:
+            state: absent
+            path: "{{ k3s_systemd_dir }}/k3s.service.env"
+            regexp: "^K3S_TOKEN=\\s*(?!{{ k3s_token }}\\s*$)"
+
+        - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Add the token for joining the cluster to the environment"
+          no_log: true # avoid logging the server token
+          ansible.builtin.lineinfile:
+            path: "{{ k3s_systemd_dir }}/k3s.service.env"
+            line: "{{ item }}"
+          with_items:
+            - "K3S_TOKEN={{ k3s_token }}"
+
+        - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Copy K3s service file [HA]"
+          when:
+            - not use_external_database
+            - k3s_ha_mode
+          ansible.builtin.template:
+            src: "k3s-ha.service.j2"
+            dest: "{{ k3s_systemd_dir }}/k3s.service"
+            owner: root
+            group: root
+            mode: "0644"
+          register: service_file_ha
+
+        - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Copy K3s service file [External DB]"
+          when:
+            - use_external_database
+            - not k3s_ha_mode
+          ansible.builtin.template:
+            src: "k3s-single.service.j2"
+            dest: "{{ k3s_systemd_dir }}/k3s.service"
+            owner: root
+            group: root
+            mode: "0644"
+          register: service_file_external_db
+
+        - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Restart K3s service"
+          when:
+            - ansible_facts.services['k3s.service'] is defined
+            - ansible_facts.services['k3s.service'].state == 'running'
+            - service_file_ha.changed or service_file_external_db.changed or _server_config_result.changed
+          ansible.builtin.systemd:
+            name: k3s
+            daemon_reload: true
+            state: restarted
+            enabled: true
+
+        - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Enable and check K3s service"
+          when: ansible_facts.services['k3s.service'] is not defined or ansible_facts.services['k3s.service'].state != 'running'
+          ansible.builtin.systemd:
+            name: k3s
+            daemon_reload: true
+            state: started
+            enabled: true
+
+        - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Verify that all server nodes joined"
+          when: not ansible_check_mode and k3s_ha_mode
+          ansible.builtin.command:
+            cmd: >
+              k3s kubectl get nodes -l "node-role.kubernetes.io/control-plane=true" -o=jsonpath="{.items[*].metadata.name}"
+          register: nodes
+          until: nodes.rc == 0 and (nodes.stdout.split() | length) == 3
+          retries: 20
+          delay: 3
+          changed_when: false
+
+    - name: Disable Flannel checksum offload and persist via udev if needed
+      block:
+        - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Check if tx-checksum-ip-generic is already off on flannel.1"
+          ansible.builtin.command:
+            cmd: ethtool -k flannel.1
+          register: ethtool_output
+          changed_when: false
+          failed_when: false
+
+        - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Disable tx-checksum-ip-generic on flannel.1 if needed"
+          ansible.builtin.command:
+            cmd: ethtool -K flannel.1 tx-checksum-ip-generic off
+          when: "'tx-checksum-ip-generic: on' in ethtool_output.stdout"
+          changed_when: true
+          notify:
+            - Ensure flannel checksum offload rule is persisted via udev
+            - Trigger udev to apply flannel offload rule
+  become: true
+  delegate_to: "{{ ansible_host }}"

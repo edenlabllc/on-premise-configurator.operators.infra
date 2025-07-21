@@ -1,0 +1,7 @@
+---
+additional_disk_device: ""
+additional_disk_formatted: false
+additional_disk_fstype: ext4
+additional_disk_mount: false
+additional_disk_mount_path: /var/lib/rancher/k3s
+k3s_api_port: 6443

@@ -1,0 +1,69 @@
+apiVersion: config.onprem.edenlab.io/v1alpha1
+kind: K3SRemoteMachine
+metadata:
+  annotations:
+    ansible.sdk.operatorframework.io/verbosity: "0"
+    ansible.sdk.operatorframework.io/reconcile-period: 120s
+  labels:
+    app.kubernetes.io/name: on-premise-configurator
+    app.kubernetes.io/managed-by: kustomize
+  name: agent-01
+spec:
+  # SSH
+  sshUser: ec2-user
+  address: 10.1.0.5
+  # Prepare OS additional disk
+  additionalDiskDevice: ""
+  additionalDiskFormatted: false
+  additionalDiskMount: false
+  # The token should be a random string of reasonable length. You can generate
+  # one with the following commands:
+  # - openssl rand -base64 64
+  # - pwgen -s 64 1
+  # You can use ansible-vault to encrypt this value / keep it secret.
+  # Or you can omit it if not using Vagrant and let the first server automatically generate one.
+  # token: ""
+  # useExternalDatabase: false
+  providerID: ""
+  # K3s
+  # Optional vars
+  k3sApiEndpoint: 10.1.0.2
+  # k3sApiPort: 6443
+  # k3sExtraAgentArgs: ""
+  # k3sExtraServerArgs: ""
+  # k3sExtraServiceEnvs: [ 'ENV_VAR1=VALUE1', 'ENV_VAR2=VALUE2' ]
+  # k3sServerLocation: /var/lib/rancher/k3s
+  # k3sServerLocationDeleteProtect false
+  # k3sSystemdDir: /etc/systemd/system
+
+  k3sAirGapEnabled: true
+  # k3sAirGapDir: /opt/airgap-k3s
+  # k3sAirGapArtifactURL: https://github.com/k3s-io/k3s/releases/download
+  # k3sSelinuxRPM: k3s-selinux-1.6-1.el9.noarch.rpm
+  # k3sSelinuxRPMURL: https://github.com/k3s-io/k3s-selinux/releases/download/v1.6.latest.1
+
+  k3sRole: agent
+  k3sInitServer: false
+#  k3sHAMode: true
+  k3sPrefixSecretRef: k3s-cluster
+  k3sVersion: "v1.31.9+k3s1"
+  #   This is now an inner yaml file. Maintain the indentation.
+  #   YAML here will be placed as the content of /etc/rancher/k3s/config.yaml
+  #   See https://docs.k3s.io/installation/configuration#configuration-file
+  # k3sServerConfigYAML: |
+  #   Same as server_config_yaml, but for the agent nodes.
+  #   YAML here will be placed as the content of /etc/rancher/k3s/config.yaml
+  #   See https://docs.k3s.io/installation/configuration#configuration-file
+  k3sAgentConfigYAML: |
+    node-label:
+      - db=mongodb
+    node-taint:
+      - key=mongodb:NoSchedule
+  #   Containerd can be configured to connect to private registries and use them to pull images as needed by the kubelet.
+  #   YAML here will be placed as the content of /etc/rancher/k3s/registries.yaml
+  #   See https://docs.k3s.io/installation/private-registry
+  # k3sRegistriesConfigYAML: |
+  #   mirrors:
+  #     public.ecr.aws:
+  #       endpoint:
+  #         - "http://10.1.0.1:5001"

@@ -1,0 +1,15 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+bin
+dist
+
+# editor and IDE paraphernalia
+.DS_Store
+.idea
+*.swp
+*.swo
+*~

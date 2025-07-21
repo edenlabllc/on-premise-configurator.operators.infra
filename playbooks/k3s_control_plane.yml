@@ -1,0 +1,85 @@
+---
+- name: Configure control plane through operator
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+    - block:
+        - name: Set phase to "Provisioning". K3SControlPlane resource
+          ansible.builtin.import_role:
+            name: operator_status
+          vars:
+            k3s_resource_kind: K3SControlPlane
+            new_phase: "Provisioning"
+            expected_previous_phase: ["", "Failed"]
+            new_message: "Verifying K3S control plane nodes status"
+            new_ready_status: false
+            new_initialized: false
+
+        - name: Retrieve K3S kubeconfig from secret
+          kubernetes.core.k8s_info:
+            api_version: v1
+            kind: Secret
+            name: "{{ k3s_prefix_secret_ref }}-kubeconfig"
+            namespace: "{{ ansible_operator_meta.namespace }}"
+          register: k3s_kubeconfig
+          delegate_to: localhost
+          run_once: true
+
+        - name: Decode kubeconfig from secret
+          when: k3s_kubeconfig.resources | default([]) | length > 0
+          ansible.builtin.set_fact:
+            remote_kubeconfig_content: "{{ k3s_kubeconfig.resources[0].data.value | b64decode }}"
+
+        - name: Write kubeconfig to file
+          when: remote_kubeconfig_content is defined
+          ansible.builtin.copy:
+            content: "{{ remote_kubeconfig_content }}"
+            dest: "/tmp/remote_kubeconfig.yaml"
+            mode: '0600'
+          delegate_to: localhost
+
+        - name: Get K3S control plane nodes
+          when: remote_kubeconfig_content is defined
+          kubernetes.core.k8s_info:
+            api_version: v1
+            kind: Node
+            kubeconfig: /tmp/remote_kubeconfig.yaml
+            label_selectors:
+              - node-role.kubernetes.io/control-plane = true
+          register: control_plane_nodes
+          delegate_to: localhost
+
+        - name: Control plane nodes not ready
+          fail:
+            msg: >-
+              Invalid number of control-plane nodes:
+              K3S HA mode = {{ k3s_ha_mode }},
+              found = {{ control_plane_nodes.resources | default([]) | length }}.
+          when: >
+            not (
+            (k3s_ha_mode and (control_plane_nodes.resources | default([]) | length >= 3)) or
+            (not k3s_ha_mode and (control_plane_nodes.resources | default([]) | length == 1))
+            )
+
+        - name: Set phase to "Provisioned". K3SControlPlane resource
+          ansible.builtin.import_role:
+            name: operator_status
+          vars:
+            k3s_resource_kind: K3SControlPlane
+            new_phase: "Provisioned"
+            expected_previous_phase: ["Failed", "Provisioning"]
+            new_message: "K3S control plane nodes are healthy"
+            new_ready_status: true
+            new_initialized: true
+      rescue:
+        - name: Set phase to "Failed". K3SControlPlane resource
+          ansible.builtin.import_role:
+            name: operator_status
+          vars:
+            k3s_resource_kind: K3SControlPlane
+            new_phase: "Failed"
+            expected_previous_phase: ["Provisioning", "Provisioned"]
+            new_message: "Expected K3S control plane nodes not found or not ready"
+            new_ready_status: false
+            new_initialized: false

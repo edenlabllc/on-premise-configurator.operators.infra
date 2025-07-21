@@ -1,0 +1,20 @@
+---
+- name: Get global facts
+  block:
+    - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Get K3S installed version"
+      ansible.builtin.command: k3s --version
+      register: k3s_version_output
+      changed_when: false
+      failed_when: false
+      check_mode: false
+
+    - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Set K3S installed version"
+      when: k3s_version_output.rc == 0 and k3s_version_output.stdout | length > 0
+      ansible.builtin.set_fact:
+        installed_k3s_version: "{{ k3s_version_output.stdout_lines[0].split(' ')[2] }}"
+      check_mode: false
+
+    - name: Gather all facts from remote host
+      ansible.builtin.setup:
+  become: true
+  delegate_to: "{{ ansible_host }}"
