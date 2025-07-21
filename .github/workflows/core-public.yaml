@@ -17,6 +17,7 @@ on:
 env:
   # AWS region of the AWS account storing images in AWS ECR.
   CORE_AWS_REGION: eu-north-1
+  CONTAINER_REPOSITORY: public.ecr.aws/edenlabllc/core.on-premise-configurator.operators.infra
 
 jobs:
   gitflow-ci:
@@ -29,6 +30,26 @@ jobs:
           ref: ${{ github.ref }}
           fetch-depth: 0
 
+      - name: Generate infrastructure components manifest
+        run: |
+          # constants for selecting branches
+          readonly GIT_BRANCH="${GITHUB_REF_NAME}"
+          readonly GITHUB_ORG="${GITHUB_REPOSITORY_OWNER}"
+                    
+          echo "Git commit message:"
+          GIT_COMMIT_MSG="$(git log -1 --pretty=format:"%s")"
+          echo "${GIT_COMMIT_MSG}"
+        
+          if [[ ! "${GIT_COMMIT_MSG}" =~ ^Merge\ pull\ request\ #[0-9]+\ from\ ${GITHUB_ORG}/(hotfix|release)/(v[0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+            >&2 echo "Pushes to master should be done via merges of PR requests from hotfix/vN.N.N or release/vN.N.N branches only."
+            >&2 echo "The expected message format (will be used for parsing a release tag):"
+            >&2 echo "Merge pull request #N from ${GITHUB_ORG}/hotfix/vN.N.N or ${GITHUB_ORG}/release/vN.N.N."
+            exit 1
+          fi
+        
+          VERSION="${BASH_REMATCH[2]}"
+          IMG="${CONTAINER_REPOSITORY}:${VERSION}" make generate 
+
       - name: Run Gitflow CI action
         uses: edenlabllc/gitflow.ci.action@v1
         with:
@@ -40,3 +61,5 @@ jobs:
           ecr_repository_name_prefix: core.
           image_delete: false
           image_scan: false
+          release_artifacts: |
+            dist/infrastructure-components.yaml
