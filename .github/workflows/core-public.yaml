@@ -41,8 +41,8 @@ jobs:
       - name: Generate infrastructure components manifest
         run: |
           # constants for selecting branches
-          readonly GIT_BRANCH="${GITHUB_REF_NAME}"
           readonly GITHUB_ORG="${GITHUB_REPOSITORY_OWNER}"
+          readonly GITHUB_REPO_NAME="${GITHUB_REPOSITORY#${GITHUB_ORG}/}"
                     
           echo "Git commit message:"
           GIT_COMMIT_MSG="$(git log -1 --pretty=format:"%s")"
@@ -56,7 +56,7 @@ jobs:
           fi
         
           VERSION="${BASH_REMATCH[2]}"
-          IMG="${CONTAINER_REPOSITORY}:${VERSION}" make generate 
+          IMG="public.ecr.aws/${GITHUB_ORG}/core.${GITHUB_REPO_NAME}:${VERSION}" make generate 
 
       - name: Run Gitflow CI action
         uses: .github/actions/gitflow.ci.action
