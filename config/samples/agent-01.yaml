@@ -33,7 +33,7 @@ spec:
   # k3sExtraServerArgs: ""
   # k3sExtraServiceEnvs: [ 'ENV_VAR1=VALUE1', 'ENV_VAR2=VALUE2' ]
   # k3sServerLocation: /var/lib/rancher/k3s
-  # k3sServerLocationDeleteProtect false
+  # k3sServerLocationDeleteProtect: false
   # k3sSystemdDir: /etc/systemd/system
 
   k3sAirGapEnabled: true

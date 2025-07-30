@@ -1,8 +1,11 @@
----
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: manager-role
+  labels:
+    # grants the CAPI controller access to our CRs
+    # see https://cluster-api.sigs.k8s.io/developer/providers/contracts/infra-cluster#all-resources-api-group
+    cluster.x-k8s.io/aggregate-to-manager: "true"
 rules:
   ##
   ## Base operator rules
