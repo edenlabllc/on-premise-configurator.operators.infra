@@ -119,6 +119,6 @@ spec:
 #            type: DirectoryOrCreate
         - name: ssh-key
           secret:
-            secretName: onprem-ssh-private-key
+            secretName: capop-ssh-identity-secret
       serviceAccountName: controller-manager
       terminationGracePeriodSeconds: 10
