@@ -1,7 +1,7 @@
 # On-Premise Configurator Operator (Ansible)
 
-[![Release](https://img.shields.io/github/v/release/edenlabllc/on-premise-configurator.ansible.infra.svg?style=for-the-badge)](https://github.com/edenlabllc/on-premise-configurator.ansible.infra/releases/latest)
-[![Software License](https://img.shields.io/github/license/edenlabllc/on-premise-configurator.ansible.infra.svg?style=for-the-badge)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/edenlabllc/on-premise-configurator.operators.infra.svg?style=for-the-badge)](https://github.com/edenlabllc/on-premise-configurator.operators.infra/releases/latest)
+[![Software License](https://img.shields.io/github/license/edenlabllc/on-premise-configurator.operators.infra.svg?style=for-the-badge)](LICENSE)
 [![Powered By: Edenlab](https://img.shields.io/badge/powered%20by-edenlab-8A2BE2.svg?style=for-the-badge)](https://edenlab.io)
 
 Kubernetes Operator for declarative configuration of remote bare-metal or virtual machines via SSH using Ansible.  

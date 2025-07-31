@@ -33,7 +33,7 @@ spec:
   # k3sExtraServerArgs: ""
   # k3sExtraServiceEnvs: [ 'ENV_VAR1=VALUE1', 'ENV_VAR2=VALUE2' ]
   # k3sServerLocation: /var/lib/rancher/k3s
-  # k3sServerLocationDeleteProtect false
+  # k3sServerLocationDeleteProtect: false
   # k3sSystemdDir: /etc/systemd/system
 
   k3sAirGapEnabled: true
@@ -53,8 +53,8 @@ spec:
   k3sServerConfigYAML: |
     node-taint:
       - node-role.kubernetes.io/control-plane=:NoSchedule
-  # tls-san:
-  #   - 10.1.0.2
+  #   tls-san:
+  #     - 10.1.0.2
   #   Same as server_config_yaml, but for the agent nodes.
   #   YAML here will be placed as the content of /etc/rancher/k3s/config.yaml
   #   See https://docs.k3s.io/installation/configuration#configuration-file
