@@ -38,6 +38,20 @@
           vars:
             ansible_connection: ssh
 
+        - name: Update spec.providerID for K3SRemoteMachine via Server-Side Apply
+          kubernetes.core.k8s:
+            apply: true
+            definition:
+              apiVersion: config.onprem.edenlab.io/v1alpha1
+              kind: K3SRemoteMachine
+              metadata:
+                name: "{{ ansible_operator_meta.name }}"
+                namespace: "{{ ansible_operator_meta.namespace }}"
+              spec:
+                providerID: "k3s://{{ short_hostname }}"
+          delegate_to: localhost
+          run_once: true
+
         - block:
             - name: Run K3S remote machine prereq role
               ansible.builtin.import_role:

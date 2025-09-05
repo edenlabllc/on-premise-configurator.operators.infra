@@ -16,5 +16,9 @@
 
     - name: Gather all facts from remote host
       ansible.builtin.setup:
+
+    - name: Set short hostname fact
+      set_fact:
+        short_hostname: "{{ ansible_hostname | default('') }}"
   become: true
   delegate_to: "{{ ansible_host }}"
