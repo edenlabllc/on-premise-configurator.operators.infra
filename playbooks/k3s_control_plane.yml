@@ -51,11 +51,27 @@
           delegate_to: localhost
 
         - name: Control plane nodes not ready
-          fail:
+          debug:
             msg: >-
               Invalid number of control-plane nodes:
               K3S HA mode = {{ k3s_ha_mode }},
               found = {{ control_plane_nodes.resources | default([]) | length }}.
+          when: >
+            not (
+            (k3s_ha_mode and (control_plane_nodes.resources | default([]) | length >= 3)) or
+            (not k3s_ha_mode and (control_plane_nodes.resources | default([]) | length == 1))
+            )
+
+        - name: Set phase to "Failed". K3SControlPlane resource
+          ansible.builtin.import_role:
+            name: operator_status
+          vars:
+            k3s_resource_kind: K3SControlPlane
+            new_phase: "Failed"
+            expected_previous_phase: [ "Provisioning", "Provisioned" ]
+            new_message: "Expected K3S control plane nodes not found or not ready"
+            new_ready_status: false
+            new_initialized: false
           when: >
             not (
             (k3s_ha_mode and (control_plane_nodes.resources | default([]) | length >= 3)) or
@@ -72,14 +88,8 @@
             new_message: "K3S control plane nodes are healthy"
             new_ready_status: true
             new_initialized: true
-      rescue:
-        - name: Set phase to "Failed". K3SControlPlane resource
-          ansible.builtin.import_role:
-            name: operator_status
-          vars:
-            k3s_resource_kind: K3SControlPlane
-            new_phase: "Failed"
-            expected_previous_phase: ["Provisioning", "Provisioned"]
-            new_message: "Expected K3S control plane nodes not found or not ready"
-            new_ready_status: false
-            new_initialized: false
+          when: >
+            (
+            (k3s_ha_mode and (control_plane_nodes.resources | default([]) | length >= 3)) or
+            (not k3s_ha_mode and (control_plane_nodes.resources | default([]) | length == 1))
+            )

@@ -6,6 +6,8 @@ metadata:
 spec:
   group: config.onprem.edenlab.io
   names:
+    categories:
+      - cluster-api
     kind: K3SRemoteMachine
     listKind: K3SRemoteMachineList
     plural: k3sremotemachines
