@@ -32,7 +32,7 @@
           delegate_to: localhost
 
         - name: K3S cluster nodes not ready
-          fail:
+          debug:
             msg: >-
               Not all K3SRemoteMachine resources are ready.
               Resources not ready: {{
@@ -45,7 +45,7 @@
           when: k3s_remote_machines.resources | default([]) | selectattr('status.ready', 'equalto', false) | list | length > 0
 
         - name: K3S cluster control plane not ready
-          fail:
+          debug:
             msg: >-
               Not all K3SControlPlane resources are ready.
               Resources not ready: {{
@@ -57,6 +57,19 @@
               }}
           when: k3s_control_plane.resources | default([]) | selectattr('status.ready', 'equalto', false) | list | length > 0
 
+        - name: Set phase to "Failed". K3SCluster resource
+          ansible.builtin.import_role:
+            name: operator_status
+          vars:
+            k3s_resource_kind: K3SCluster
+            new_phase: "Failed"
+            expected_previous_phase: [ "Provisioning", "Provisioned" ]
+            new_message: "Validation failed: some cluster components are not ready"
+            new_ready_status: false
+          when:
+            - k3s_remote_machines.resources | default([]) | selectattr('status.ready', 'equalto', false) | list | length > 0
+            - k3s_control_plane.resources | default([]) | selectattr('status.ready', 'equalto', false) | list | length > 0
+
         - name: Set phase to "Provisioned". K3SCluster resource
           ansible.builtin.import_role:
             name: operator_status
@@ -66,13 +79,6 @@
             expected_previous_phase: ["Failed", "Provisioning"]
             new_message: "All K3S cluster components are ready"
             new_ready_status: true
-      rescue:
-        - name: Set phase to "Failed". K3SCluster resource
-          ansible.builtin.import_role:
-            name: operator_status
-          vars:
-            k3s_resource_kind: K3SCluster
-            new_phase: "Failed"
-            expected_previous_phase: ["Provisioning", "Provisioned"]
-            new_message: "Validation failed: some cluster components are not ready"
-            new_ready_status: false
+          when:
+            - k3s_remote_machines.resources | default([]) | selectattr('status.ready', 'equalto', false) | list | length == 0
+            - k3s_control_plane.resources | default([]) | selectattr('status.ready', 'equalto', false) | list | length == 0

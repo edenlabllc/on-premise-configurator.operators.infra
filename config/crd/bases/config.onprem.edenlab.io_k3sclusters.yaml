@@ -6,6 +6,8 @@ metadata:
 spec:
   group: config.onprem.edenlab.io
   names:
+    categories:
+      - cluster-api
     kind: K3SCluster
     listKind: K3SClusterList
     plural: k3sclusters
