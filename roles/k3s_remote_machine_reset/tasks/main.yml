@@ -4,6 +4,8 @@
     name: operator_status
   vars:
     k3s_resource_kind: K3SRemoteMachine
+    new_k3s_internal_ip: ""
+    new_k3s_hostname: ""
     new_phase: "Uninstalling"
     expected_previous_phase: ["Installed", "Failed"]
     new_message: "Uninstalling K3S and reverting remote machine configuration"

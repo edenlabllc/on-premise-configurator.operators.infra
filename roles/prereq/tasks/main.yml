@@ -242,7 +242,7 @@
             state: link
 
     - name: Setup extra manifests
-      when: extra_manifests is defined and extra_manifests | length > 0
+      when: k3s_extra_manifests is defined and k3s_extra_manifests | length > 0
       block:
         - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Make manifests directory"
           ansible.builtin.file:
@@ -251,10 +251,10 @@
             state: directory
         - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Copy manifests"
           ansible.builtin.copy:
-            src: "{{ item }}"
-            dest: "/var/lib/rancher/k3s/server/manifests"
+            content: "{{ item.value }}"
+            dest: "/var/lib/rancher/k3s/server/manifests/{{ item.key }}"
             mode: "0600"
-          loop: "{{ extra_manifests }}"
+          loop: "{{ k3s_extra_manifests | dict2items }}"
 
     - name: Setup optional private registry configuration
       when: k3s_registries_config_yaml is defined and k3s_registries_config_yaml | length > 0

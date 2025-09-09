@@ -76,6 +76,7 @@
     k3s_extra_agent_args: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.k3sExtraAgentArgs | default('') }}"
     k3s_extra_server_args: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.k3sExtraServerArgs | default('') }}"
     k3s_extra_service_envs: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.k3sExtraServiceEnvs | default([]) }}"
+    k3s_extra_manifests: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.k3sExtraManifests | default({}) }}"
 
     k3s_ha_mode: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.k3sHAMode | default(false) }}"
     k3s_role: "{{ _config_onprem_edenlab_io_k3sremotemachine.spec.k3sRole | default('server') }}"
