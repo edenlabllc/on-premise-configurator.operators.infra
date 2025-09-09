@@ -18,6 +18,11 @@
     name: "{{ ansible_operator_meta.name }}"
     namespace: "{{ ansible_operator_meta.namespace }}"
     status:
+      addresses:
+      - address: "{{ new_k3s_internal_ip }}"
+        type: InternalIP
+      - address: "{{ new_k3s_hostname }}"
+        type: Hostname
       phase: "{{ new_phase }}"
       message: "{{ new_message | default(omit) }}"
       ready: "{{ new_ready_status }}"

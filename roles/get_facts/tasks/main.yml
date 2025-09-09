@@ -14,11 +14,22 @@
         installed_k3s_version: "{{ k3s_version_output.stdout_lines[0].split(' ')[2] }}"
       check_mode: false
 
+    - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Get current hostname"
+      ansible.builtin.command: hostname
+      register: hostname_output
+      changed_when: false
+      failed_when: false
+      check_mode: false
+
     - name: Gather all facts from remote host
       ansible.builtin.setup:
 
-    - name: Set short hostname fact
+    - name: Set hostname fact
       set_fact:
-        short_hostname: "{{ ansible_hostname | default('') }}"
+        k3s_hostname: "{{ hostname_output.stdout | default(ansible_fqdn) }}"
+
+    - name: Set internal IPv4 fact
+      set_fact:
+        k3s_internal_ip: "{{ ansible_default_ipv4.address | default('') }}"
   become: true
   delegate_to: "{{ ansible_host }}"

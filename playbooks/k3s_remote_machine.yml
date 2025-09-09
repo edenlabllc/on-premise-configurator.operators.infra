@@ -27,6 +27,8 @@
             name: operator_status
           vars:
             k3s_resource_kind: K3SRemoteMachine
+            new_k3s_internal_ip: ""
+            new_k3s_hostname: ""
             new_phase: "Installing"
             expected_previous_phase: ["", "Failed"]
             new_message: "Starting K3S remote machine configuration"
@@ -48,7 +50,7 @@
                 name: "{{ ansible_operator_meta.name }}"
                 namespace: "{{ ansible_operator_meta.namespace }}"
               spec:
-                providerID: "k3s://{{ short_hostname }}"
+                providerID: "k3s://{{ k3s_hostname }}"
           delegate_to: localhost
           run_once: true
 
@@ -160,6 +162,8 @@
             name: operator_status
           vars:
             k3s_resource_kind: K3SRemoteMachine
+            new_k3s_internal_ip: "{{ k3s_internal_ip }}"
+            new_k3s_hostname: "{{ k3s_hostname }}"
             new_phase: "Installed"
             expected_previous_phase: ["Failed", "Installing"]
             new_message: "K3S node successfully configured"
@@ -171,6 +175,8 @@
             name: operator_status
           vars:
             k3s_resource_kind: K3SRemoteMachine
+            new_k3s_internal_ip: ""
+            new_k3s_hostname: ""
             new_phase: "Failed"
             expected_previous_phase: ["Installing", "Installed"]
             new_message: "An error occurred during K3S setup"
