@@ -62,7 +62,6 @@ spec:
           - --leader-elect
           - --leader-election-id=on-premise-configurator
           - --health-probe-bind-address=:6789
-          - --max-concurrent-reconciles=20
           - --ansible-log-events=Tasks
           - --ansible-verbosity=0
         image: controller:latest
