@@ -4,14 +4,15 @@
 [![Software License](https://img.shields.io/github/license/edenlabllc/on-premise-configurator.operators.infra.svg?style=for-the-badge)](LICENSE)
 [![Powered By: Edenlab](https://img.shields.io/badge/powered%20by-edenlab-8A2BE2.svg?style=for-the-badge)](https://edenlab.io)
 
-Kubernetes Operator enabling declarative configuration of remote **bare-metal** or **virtual** machines over SSH,  
-designed to work in both **isolated** ("_air-gapped_") and **network-connected** environments.
+Kubernetes Operator for declarative configuration of remote **bare-metal** or **virtual** machines over SSH,  
+designed to work in both **isolated** ([air-gapped](https://en.wikipedia.org/wiki/Air_gap_(networking))) 
+and **network-connected** environments.
 
-Key features:
+:white_check_mark: Implements the
+[Cluster API provider contract](https://cluster-api.sigs.k8s.io/developer/providers/contracts/overview)  
+for Kubernetes infrastructure providers, ensuring full compatibility with
+[Cluster API](https://cluster-api.sigs.k8s.io/).
 
-- Implements the
-  [Kubernetes Cluster API provider contract](https://cluster-api.sigs.k8s.io/developer/providers/contracts/overview)  
-  for infrastructure providers, ensuring full compatibility with [Cluster API](https://cluster-api.sigs.k8s.io/).
 - Based on the [Ansible Operator SDK](https://sdk.operatorframework.io/docs/building-operators/ansible/).
 - Supports [K3S](https://docs.k3s.io/) installation and OS configuration.
 - Inspired by the [k3s-ansible](https://github.com/k3s-io/k3s-ansible) project.
@@ -27,13 +28,13 @@ provision infrastructure.
 
 ### Key features
 
-- SSH-based configuration of remote Linux hosts
-- Airgapped and online K3S installation
-- Modular roles for firewall, disk, and OS setup
-- Declarative CRDs: `K3SRemoteMachine`
-- Built-in status management (`Installing`, `Ready`, `Failed`)
-- Finalizer for cleanup (optional)
-- Secret generation (`token`, `kubeconfig`) on init server
+- SSH-based configuration of remote Linux hosts.
+- Isolated and network-connected K3S installation.
+- Modular roles for firewall, disk, and OS setup.
+- Declarative CRDs: `K3SRemoteMachine`.
+- Built-in status management (`Installing`, `Ready`, `Failed`).
+- Finalizer for cleanup (optional).
+- Secret generation (`token`, `kubeconfig`) on init server.
 
 ---
 
@@ -57,8 +58,6 @@ provision infrastructure.
 | `Installing` | Configuration is in progress    |
 | `Ready`      | Host successfully configured    |
 | `Failed`     | Setup failed with error message |
-
-[//]: # (TODO UPDATE STATUSES)
 
 ---
 
