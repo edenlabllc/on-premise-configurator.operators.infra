@@ -5,7 +5,7 @@
 [![Powered By: Edenlab](https://img.shields.io/badge/powered%20by-edenlab-8A2BE2.svg?style=for-the-badge)](https://edenlab.io)
 
 Kubernetes Operator for declarative configuration of remote **bare-metal** or **virtual** machines over SSH,  
-designed to work in both **isolated** ([air-gapped](https://en.wikipedia.org/wiki/Air_gap_(networking))) 
+designed to work in both **isolated** ([air-gapped](https://en.wikipedia.org/wiki/Air_gap_(networking)))
 and **network-connected** environments.
 
 :white_check_mark: Implements the
@@ -21,9 +21,9 @@ for Kubernetes infrastructure providers, ensuring full compatibility with
 
 ## What it does
 
-This operator connects to **remote** Linux machines via SSH and applies Ansible roles to configure them with K3S 
+This operator connects to **remote** Linux machines via SSH and applies Ansible roles to configure them with K3S
 or custom OS tweaks.  
-It is intended for managing machines that are **already** provisioned (e.g., via PXE, IPMI, or manually) 
+It is intended for managing machines that are **already** provisioned (e.g., via PXE, IPMI, or manually)
 and **does not** provision infrastructure.
 
 ### Key features
@@ -31,8 +31,12 @@ and **does not** provision infrastructure.
 - SSH-based configuration of remote Linux hosts.
 - Isolated and network-connected K3S installation.
 - Modular roles for firewall, disk, and OS setup.
-- Declarative CRDs: `K3SRemoteMachine`.
-- Built-in status management (`Installing`, `Ready`, `Failed`).
+- Declarative CRDs: `K3SCluster`, `K3SControlPlane`, `K3SRemoteMachine`.
+- Built-in status management according to
+  [Cluster API](https://github.com/kubernetes-sigs/cluster-api/blob/release-1.8/docs/book/src/images/bootstrap-controller.png.
+- Automatic retrieval of
+  [providerID](https://cluster-api.sigs.k8s.io/developer/providers/contracts/infra-machine#inframachine-provider-id)
+  and node addresses from the machine hostname.
 - Finalizer for cleanup (optional).
 - Secret generation (`token`, `kubeconfig`) on init server.
 
