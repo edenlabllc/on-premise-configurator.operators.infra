@@ -33,7 +33,7 @@ and **does not** provision infrastructure.
 - Modular roles for firewall, disk, and OS setup.
 - Declarative CRDs: `K3SCluster`, `K3SControlPlane`, `K3SRemoteMachine`.
 - Built-in status management according to
-  [Cluster API](https://github.com/kubernetes-sigs/cluster-api/blob/release-1.8/docs/book/src/images/bootstrap-controller.png.
+  [Cluster API](https://github.com/kubernetes-sigs/cluster-api/blob/release-1.8/docs/book/src/images/bootstrap-controller.png).
 - Automatic retrieval of
   [providerID](https://cluster-api.sigs.k8s.io/developer/providers/contracts/infra-machine#inframachine-provider-id)
   and node addresses from the machine hostname.
