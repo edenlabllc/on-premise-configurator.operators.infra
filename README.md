@@ -42,6 +42,17 @@ and **does not** provision infrastructure.
 
 ---
 
+## Max Concurrent Reconciles
+
+The operator relies on the default **automatic** setting for the number of
+[concurrent reconciles](https://sdk.operatorframework.io/docs/building-operators/ansible/reference/advanced_options/#max-concurrent-reconciles)
+(`runtime.NumCPU()`).
+
+If you are managing **large** pools of machines or clusters, consider **tuning** this value explicitly for higher
+throughput.
+
+---
+
 ## Project structure
 
 | Path               | Purpose                                           |
@@ -52,16 +63,6 @@ and **does not** provision infrastructure.
 | `watches.yaml`     | Mapping of CR to playbook and var binding         |
 | `Dockerfile`       | Operator image with Ansible runtime               |
 | `requirements.yml` | Ansible collections required                      |
-
----
-
-## Lifecycle phases
-
-| Phase        | Description                     |
-|--------------|---------------------------------|
-| `Installing` | Configuration is in progress    |
-| `Ready`      | Host successfully configured    |
-| `Failed`     | Setup failed with error message |
 
 ---
 
