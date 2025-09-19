@@ -21,8 +21,8 @@ for Kubernetes infrastructure providers, ensuring full compatibility with
 
 ## What it does
 
-This operator connects to remote Linux machines via SSH and applies Ansible roles to configure them with K3S or custom
-OS tweaks.  
+This operator connects to **remote** Linux machines via SSH and applies Ansible roles to configure them with K3S 
+or custom OS tweaks.  
 It is intended for managing machines that are already provisioned (e.g., via PXE, IPMI, or manually) and does **not**
 provision infrastructure.
 
