@@ -42,7 +42,7 @@ and **does not** provision infrastructure.
 
 ---
 
-## Max Concurrent Reconciles
+## Performance tuning
 
 The operator relies on the default **automatic** setting for the number of
 [concurrent reconciles](https://sdk.operatorframework.io/docs/building-operators/ansible/reference/advanced_options/#max-concurrent-reconciles)
