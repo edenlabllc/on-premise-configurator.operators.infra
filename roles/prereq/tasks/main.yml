@@ -59,14 +59,13 @@
             port: "2379:2381"
             proto: tcp
 
-        - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - If ufw enabled, open inter-node ports (Flannel, Kubelet, Spegel)"
+        - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - If ufw enabled, open inter-node ports (Flannel, Kubelet)"
           when: "'Status: active' in ufw_status['stdout']"
           community.general.ufw:
             rule: allow
             port: "{{ item.port }}"
             proto: "{{ item.proto }}"
           loop:
-            - { port: "5001", proto: "tcp" }   # Spegel (Embedded distributed registry)
             - { port: "8472", proto: "udp" }   # Flannel VXLAN
             - { port: "10250", proto: "tcp" }  # Kubelet metrics
             - { port: "51820", proto: "udp" }  # Flannel Wireguard (IPv4)
@@ -110,7 +109,6 @@
             permanent: true
             immediate: true
           with_items:
-            - 5001/tcp   # Spegel (Embedded distributed registry)
             - 8472/udp   # Flannel VXLAN
             - 10250/tcp  # Kubelet metrics
             - 51820/udp  # Flannel Wireguard (IPv4)
