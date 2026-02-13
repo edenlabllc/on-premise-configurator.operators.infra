@@ -59,6 +59,19 @@
             port: "2379:2381"
             proto: tcp
 
+        - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - If ufw enabled, open inter-node ports (Flannel, Kubelet, Spegel)"
+          when: "'Status: active' in ufw_status['stdout']"
+          community.general.ufw:
+            rule: allow
+            port: "{{ item.port }}"
+            proto: "{{ item.proto }}"
+          loop:
+            - { port: "5001", proto: "tcp" }   # Spegel (Embedded distributed registry)
+            - { port: "8472", proto: "udp" }   # Flannel VXLAN
+            - { port: "10250", proto: "tcp" }  # Kubelet metrics
+            - { port: "51820", proto: "udp" }  # Flannel Wireguard (IPv4)
+            - { port: "51821", proto: "udp" }  # Flannel Wireguard (IPv6)
+
         - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - If ufw enabled, allow default CIDRs"
           when:
             - "'Status: active' in ufw_status['stdout']"
@@ -112,18 +125,19 @@
             immediate: true
           loop: "{{ (cluster_cidr + ',' + service_cidr) | split(',') }}"
 
+    # br_netfilter required for Flannel/CNI bridge traffic (RedHat, Debian/Ubuntu, Arch)
     - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Add br_netfilter to /etc/modules-load.d/"
       ansible.builtin.copy:
         content: "br_netfilter"
         dest: /etc/modules-load.d/br_netfilter.conf
         mode: "u=rw,g=,o="
-      when: (ansible_os_family == 'RedHat' or ansible_distribution == 'Archlinux')
+      when: (ansible_os_family == 'RedHat' or ansible_os_family == 'Debian' or ansible_distribution == 'Archlinux')
 
     - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Load br_netfilter"
       community.general.modprobe:
         name: br_netfilter
         state: present
-      when: (ansible_os_family == 'RedHat' or ansible_distribution == 'Archlinux')
+      when: (ansible_os_family == 'RedHat' or ansible_os_family == 'Debian' or ansible_distribution == 'Archlinux')
 
     - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Set bridge-nf-call-iptables (just to be sure)"
       ansible.posix.sysctl:
@@ -131,7 +145,7 @@
         value: "1"
         state: present
         reload: true
-      when: (ansible_os_family == 'RedHat' or ansible_distribution == 'Archlinux')
+      when: (ansible_os_family == 'RedHat' or ansible_os_family == 'Debian' or ansible_distribution == 'Archlinux')
       loop:
         - net.bridge.bridge-nf-call-iptables
         - net.bridge.bridge-nf-call-ip6tables
@@ -145,14 +159,14 @@
     - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Disable swap"
       ansible.builtin.command: swapoff -a
       changed_when: true
-      when: (ansible_os_family == 'RedHat' or ansible_distribution == 'Archlinux')
+      when: (ansible_os_family == 'RedHat' or ansible_os_family == 'Debian' or ansible_distribution == 'Archlinux')
 
     - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Remove swap entry from /etc/fstab"
       ansible.builtin.replace:
         path: /etc/fstab
         regexp: '^(\S+\s+\S+\s+swap\s+.*)$'
         replace: '# \1'
-      when: (ansible_os_family == 'RedHat' or ansible_distribution == 'Archlinux')
+      when: (ansible_os_family == 'RedHat' or ansible_os_family == 'Debian' or ansible_distribution == 'Archlinux')
 
     - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Mask nm-cloud-setup.service if present"
       ansible.builtin.systemd:
@@ -166,7 +180,7 @@
       ansible.builtin.include_tasks: additional_disk_device.yml
       when:
         - additional_disk_device is defined and additional_disk_device | length > 0
-        - (ansible_os_family == 'RedHat' or ansible_distribution == 'Archlinux')
+        - (ansible_os_family == 'RedHat' or ansible_os_family == 'Debian' or ansible_distribution == 'Archlinux')
 
     - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Check for Apparmor existence"
       ansible.builtin.stat:
@@ -188,10 +202,9 @@
         name: apparmor-parser
         state: present
 
-    - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Install Apparmor Parser [Debian]"
+    - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Install Apparmor Parser [Debian/Ubuntu]"
       when:
-        - ansible_distribution == 'Debian'
-        - ansible_facts['distribution_major_version'] == "11"
+        - ansible_os_family == 'Debian'
         - apparmor_status is defined
         - apparmor_status.stdout == "Y"
       ansible.builtin.package:
@@ -203,14 +216,21 @@
         manager: auto
 
     # Iptables v1.8.0-1.8.4 have a specific bug with K3s. https://github.com/k3s-io/k3s/issues/3117
+    # Ubuntu may ship iptables-nft; check both package names
+    - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Set iptables version for compatibility check"
+      ansible.builtin.set_fact:
+        iptables_pkg_version: "{{ (ansible_facts.packages | default({})).get('iptables', (ansible_facts.packages | default({})).get('iptables-nft', [{}]))[0].get('version', '') }}"
+      when: ansible_facts.packages is defined
+
     - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - If iptables v1.8.0-1.8.4, warn user"  # noqa ignore-errors
       when:
-        - ansible_facts.packages['iptables'] is defined
-        - ansible_facts.packages['iptables'][0]['version'] is version('1.8.5', '<')
-        - ansible_facts.packages['iptables'][0]['version'] is version('1.7.9', '>')
+        - iptables_pkg_version is defined
+        - iptables_pkg_version | length > 0
+        - iptables_pkg_version is version('1.8.5', '<')
+        - iptables_pkg_version is version('1.7.9', '>')
       ansible.builtin.fail:
         msg:
-          - "Warning: Iptables {{ ansible_facts.packages['iptables'][0]['version'] }} found."
+          - "Warning: Iptables {{ iptables_pkg_version }} found."
           - "Add '--prefer-bundled-bin' to k3s_extra_server_args variable to use the bundled iptables binary."
       ignore_errors: true
 
