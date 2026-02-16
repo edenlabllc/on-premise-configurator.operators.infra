@@ -202,9 +202,10 @@
         name: apparmor-parser
         state: present
 
-    - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Install Apparmor Parser [Debian/Ubuntu]"
+    - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Install Apparmor Parser [Debian]"
       when:
-        - ansible_os_family == 'Debian'
+        - ansible_distribution == 'Debian'
+        - ansible_facts['distribution_major_version'] == "11"
         - apparmor_status is defined
         - apparmor_status.stdout == "Y"
       ansible.builtin.package:
