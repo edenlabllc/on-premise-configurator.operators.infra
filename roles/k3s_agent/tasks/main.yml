@@ -58,7 +58,7 @@
         regexp: "^K3S_TOKEN=\\s*(?!{{ k3s_token }}\\s*$)"
 
     - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Add the token for joining the cluster to the environment"
-      no_log: true # avoid logging the server token
+#      no_log: true # avoid logging the server token
       ansible.builtin.lineinfile:
         path: "{{ k3s_systemd_dir }}/k3s-agent.service.env"
         line: "{{ item }}"
