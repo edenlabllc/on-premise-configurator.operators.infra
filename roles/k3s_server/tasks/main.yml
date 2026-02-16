@@ -176,14 +176,6 @@
             line: "{{ item }}"
           with_items: "{{ k3s_extra_service_envs }}"
 
-        - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - [DEBUG] Token context before add"
-          ansible.builtin.debug:
-            msg:
-              - "k3s_token defined: {{ k3s_token is defined }}"
-              - "k3s_token length: {{ k3s_token | default('') | length }}"
-              - "k3s_systemd_dir: {{ k3s_systemd_dir }}"
-              - "env_file path: {{ k3s_systemd_dir }}/k3s.service.env"
-
         - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Stat k3s.service.env"
           ansible.builtin.stat:
             path: "{{ k3s_systemd_dir }}/k3s.service.env"
@@ -206,6 +198,7 @@
             - "K3S_TOKEN={{ k3s_token }}"
           register: add_token_result
           ignore_errors: true
+          no_log: true
 
         - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Fail if token was not added"
           when: add_token_result is failed
