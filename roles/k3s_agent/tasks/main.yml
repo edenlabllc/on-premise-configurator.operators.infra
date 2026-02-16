@@ -74,19 +74,15 @@
       register: add_token_result
       ignore_errors: true
 
-    - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - [DEBUG] Add token result"
-      ansible.builtin.debug:
-        msg:
-          - "Add token failed: {{ add_token_result is failed }}"
-          - "Add token msg: {{ (add_token_result.results[0] | default(add_token_result)).msg | default('') }}"
-          - "Add token stderr: {{ (add_token_result.results[0] | default(add_token_result)).stderr | default('') }}"
-          - "Add token rc: {{ (add_token_result.results[0] | default(add_token_result)).rc | default('') }}"
-      when: add_token_result is failed
-
     - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Fail if token was not added"
-      ansible.builtin.fail:
-        msg: "Add token task failed. Check [DEBUG] output above for details."
       when: add_token_result is failed
+      ansible.builtin.fail:
+        msg: >-
+          Add token to {{ k3s_systemd_dir }}/k3s-agent.service.env failed.
+          k3s_token defined={{ k3s_token is defined }}, length={{ k3s_token | default('') | length }}.
+          lineinfile result: msg={{ (add_token_result.results[0] | default(add_token_result)).msg | default('') }},
+          stderr={{ (add_token_result.results[0] | default(add_token_result)).stderr | default('') }},
+          rc={{ (add_token_result.results[0] | default(add_token_result)).rc | default('') }}.
 
     - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Copy K3s service file"
       register: k3s_agent_service
