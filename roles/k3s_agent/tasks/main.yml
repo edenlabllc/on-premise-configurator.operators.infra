@@ -79,7 +79,7 @@
         - "K3S_TOKEN={{ k3s_token }}"
       register: add_token_result
       ignore_errors: true
-      no_log: true
+      no_log: true # avoid logging the server token
 
     - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Fail if token was not added"
       when: add_token_result is failed

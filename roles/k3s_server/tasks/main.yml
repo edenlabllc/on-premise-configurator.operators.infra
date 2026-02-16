@@ -93,10 +93,10 @@
         # Add the token to the environment if it has been provided.
         # Otherwise, let the first server create one on the first run.
         - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Add token as an environment variable"
-#          no_log: true # avoid logging the server token
           ansible.builtin.lineinfile:
             path: "{{ k3s_systemd_dir }}/k3s.service.env"
             line: "K3S_TOKEN={{ k3s_token }}"
+          no_log: true # avoid logging the server token
           when: k3s_token is defined and k3s_token | length > 0
 
         - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Restart K3S service"
@@ -198,7 +198,7 @@
             - "K3S_TOKEN={{ k3s_token }}"
           register: add_token_result
           ignore_errors: true
-          no_log: true
+          no_log: true # avoid logging the server token
 
         - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Fail if token was not added"
           when: add_token_result is failed
