@@ -44,10 +44,16 @@
             mode: "0644"
           register: _agent_config_result
 
+    - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Ensure k3s-agent.service.env exists"
+      ansible.builtin.file:
+        path: "{{ k3s_systemd_dir }}/k3s-agent.service.env"
+        state: touch
+        mode: "0644"
+
     - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Add service environment variables"
       when: k3s_extra_service_envs is defined and k3s_extra_service_envs | length > 0
       ansible.builtin.lineinfile:
-        path: "{{ k3s_systemd_dir }}/k3s.service.env"
+        path: "{{ k3s_systemd_dir }}/k3s-agent.service.env"
         line: "{{ item }}"
       with_items: "{{ k3s_extra_service_envs }}"
 
@@ -59,7 +65,13 @@
           - "k3s_systemd_dir: {{ k3s_systemd_dir }}"
           - "env_file path: {{ k3s_systemd_dir }}/k3s-agent.service.env"
 
+    - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Stat k3s-agent.service.env"
+      ansible.builtin.stat:
+        path: "{{ k3s_systemd_dir }}/k3s-agent.service.env"
+      register: env_file_stat
+
     - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Delete any existing token from the environment if different from the new one"
+      when: env_file_stat.stat.exists | default(false)
       ansible.builtin.lineinfile:
         state: absent
         path: "{{ k3s_systemd_dir }}/k3s-agent.service.env"
@@ -69,6 +81,8 @@
       ansible.builtin.lineinfile:
         path: "{{ k3s_systemd_dir }}/k3s-agent.service.env"
         line: "{{ item }}"
+        create: true
+        mode: "0644"
       with_items:
         - "K3S_TOKEN={{ k3s_token }}"
       register: add_token_result

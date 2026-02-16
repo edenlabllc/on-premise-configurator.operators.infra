@@ -88,16 +88,21 @@
           ansible.builtin.set_fact:
             k3s_token: "{{ token | default('') }}"
 
+        - name: Fail if k3s_role is not server or agent
+          ansible.builtin.fail:
+            msg: "k3s_role must be 'server' or 'agent', got: {{ k3s_role | default('(undefined)') }}"
+          when: k3s_role | default('') not in ['server', 'agent']
+
         - block:
             - name: Run K3S server role
-              when: k3s_role == 'server'
-              ansible.builtin.import_role:
+              ansible.builtin.include_role:
                 name: k3s_server
+              when: k3s_role == 'server'
 
             - name: Run K3S agent role
-              when: k3s_role == 'agent'
-              ansible.builtin.import_role:
+              ansible.builtin.include_role:
                 name: k3s_agent
+              when: k3s_role == 'agent'
           vars:
             ansible_connection: ssh
             k3s_token: "{{ k3s_token }}"
