@@ -93,10 +93,10 @@
         # Add the token to the environment if it has been provided.
         # Otherwise, let the first server create one on the first run.
         - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Add token as an environment variable"
+          no_log: true # avoid logging the server token
           ansible.builtin.lineinfile:
             path: "{{ k3s_systemd_dir }}/k3s.service.env"
             line: "K3S_TOKEN={{ k3s_token }}"
-          no_log: true # avoid logging the server token
           when: k3s_token is defined and k3s_token | length > 0
 
         - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Restart K3S service"
@@ -163,12 +163,6 @@
         - k3s_role == 'server'
         - not k3s_init_server
       block:
-        - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Ensure k3s.service.env exists"
-          ansible.builtin.file:
-            path: "{{ k3s_systemd_dir }}/k3s.service.env"
-            state: touch
-            mode: "0644"
-
         - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Add service environment variables"
           when: k3s_extra_service_envs is defined and k3s_extra_service_envs | length > 0
           ansible.builtin.lineinfile:
@@ -176,39 +170,19 @@
             line: "{{ item }}"
           with_items: "{{ k3s_extra_service_envs }}"
 
-        - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Stat k3s.service.env"
-          ansible.builtin.stat:
-            path: "{{ k3s_systemd_dir }}/k3s.service.env"
-          register: env_file_stat
-
         - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Delete any existing token from the environment if different from the new one"
-          when: env_file_stat.stat.exists | default(false)
           ansible.builtin.lineinfile:
             state: absent
             path: "{{ k3s_systemd_dir }}/k3s.service.env"
-            regexp: "^K3S_TOKEN=\\s*(?!{{ k3s_token | default('') | regex_escape }}\\s*$)"
+            regexp: "^K3S_TOKEN=\\s*(?!{{ k3s_token }}\\s*$)"
 
         - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Add the token for joining the cluster to the environment"
+          no_log: true # avoid logging the server token
           ansible.builtin.lineinfile:
             path: "{{ k3s_systemd_dir }}/k3s.service.env"
             line: "{{ item }}"
-            create: true
-            mode: "0644"
           with_items:
             - "K3S_TOKEN={{ k3s_token }}"
-          register: add_token_result
-          ignore_errors: true
-          no_log: true # avoid logging the server token
-
-        - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Fail if token was not added"
-          when: add_token_result is failed
-          ansible.builtin.fail:
-            msg: >-
-              Add token to {{ k3s_systemd_dir }}/k3s.service.env failed.
-              k3s_token defined={{ k3s_token is defined }}, length={{ k3s_token | default('') | length }}.
-              lineinfile result: msg={{ (add_token_result.results[0] | default(add_token_result)).msg | default('') }},
-              stderr={{ (add_token_result.results[0] | default(add_token_result)).stderr | default('') }},
-              rc={{ (add_token_result.results[0] | default(add_token_result)).rc | default('') }}.
 
         - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Copy K3s service file [HA]"
           when:
@@ -265,6 +239,7 @@
           changed_when: false
 
     - name: Disable Flannel checksum offload and persist via udev if needed
+      when: ansible_os_family == 'RedHat'
       block:
         - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Check if tx-checksum-ip-generic is already off on flannel.1"
           ansible.builtin.command:
