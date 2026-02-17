@@ -7,7 +7,6 @@
     #   - the installed version of K3s on the nodes is older than the requested version in ansible vars
     - name: Download artifact only if needed
       when:
-        - ansible_check_mode
         - not k3s_airgap
         - installed_k3s_version is undefined or ( installed_k3s_version is defined and installed_k3s_version is version(k3s_version, '<') )
       block:

@@ -7,7 +7,6 @@
     #   - the installed version of K3s on the nodes is older than the requested version in ansible vars
     - name: Download artifact only if needed
       when:
-        - ansible_check_mode
         - not k3s_airgap
         - installed_k3s_version is undefined or ( installed_k3s_version is defined and installed_k3s_version is version(k3s_version, '<') )
       block:
@@ -228,7 +227,7 @@
             enabled: true
 
         - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Verify that all server nodes joined"
-          when: not ansible_check_mode and k3s_ha_mode
+          when: k3s_ha_mode
           ansible.builtin.command:
             cmd: >
               k3s kubectl get nodes -l "node-role.kubernetes.io/control-plane=true" -o=jsonpath="{.items[*].metadata.name}"
