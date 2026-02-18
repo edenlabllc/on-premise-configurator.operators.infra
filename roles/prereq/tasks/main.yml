@@ -56,7 +56,7 @@
             - k3s_role == 'server'
           community.general.ufw:
             rule: allow
-            port: "2379:2380"
+            port: "2379:2382"
             proto: tcp
 
         - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - If ufw enabled, open K3s supervisor port (HA)"
