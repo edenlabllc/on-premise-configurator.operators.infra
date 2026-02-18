@@ -56,7 +56,16 @@
             - k3s_role == 'server'
           community.general.ufw:
             rule: allow
-            port: "2379:2381"
+            port: "2379:2380"
+            proto: tcp
+
+        - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - If ufw enabled, open K3s supervisor port (HA)"
+          when:
+            - "'Status: active' in ufw_status['stdout']"
+            - k3s_role == 'server'
+          community.general.ufw:
+            rule: allow
+            port: "9345"
             proto: tcp
 
         - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - If ufw enabled, open inter-node ports (Flannel, Kubelet)"
@@ -96,7 +105,7 @@
         - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - If firewalld enabled, open etcd ports"
           when: k3s_role == 'server'
           ansible.posix.firewalld:
-            port: "2379-2381/tcp"
+            port: "2379-2380/tcp"
             zone: internal
             state: enabled
             permanent: true
@@ -139,7 +148,7 @@
         state: present
       when: (ansible_os_family == 'RedHat' or ansible_os_family == 'Debian' or ansible_distribution == 'Archlinux')
 
-    - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Set bridge-nf-call-iptables (just to be sure)"
+    - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Set bridge-nf-call-iptables"
       ansible.posix.sysctl:
         name: "{{ item }}"
         value: "1"

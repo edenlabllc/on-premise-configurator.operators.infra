@@ -79,9 +79,18 @@
           when: not k3s_init_server
 
         - name: "Set token fact from secret"
-          when: not k3s_init_server
+          when:
+            - not k3s_init_server
+            - k3s_token_secret.resources | default([]) | length > 0
           ansible.builtin.set_fact:
-            k3s_token: "{{ (k3s_token_secret.resources[0].data.token | b64decode) | default('') }}"
+            k3s_token: "{{ (k3s_token_secret.resources[0].data.token | b64decode) | trim }}"
+
+        - name: "Set token fact to empty when secret not found"
+          when:
+            - not k3s_init_server
+            - k3s_token_secret.resources | default([]) | length == 0
+          ansible.builtin.set_fact:
+            k3s_token: ""
 
         - name: "Set definition token fact"
           when: k3s_init_server
