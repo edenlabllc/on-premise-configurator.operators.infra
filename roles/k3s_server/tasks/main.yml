@@ -229,7 +229,6 @@
         - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Verify that all server nodes joined"
           when:
             - k3s_ha_mode
-            - k3s_init_server
           ansible.builtin.command:
             cmd: >
               k3s kubectl get nodes -l "node-role.kubernetes.io/control-plane=true" -o=jsonpath="{.items[*].metadata.name}"
