@@ -105,7 +105,7 @@
         - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - If firewalld enabled, open etcd ports"
           when: k3s_role == 'server'
           ansible.posix.firewalld:
-            port: "2379-2380/tcp"
+            port: "2379-2382/tcp"
             zone: internal
             state: enabled
             permanent: true
@@ -183,7 +183,6 @@
         enabled: false
         masked: true
       failed_when: false
-      when: (ansible_os_family == 'RedHat' or ansible_distribution == 'Archlinux')
 
     - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Conditionally include disk tasks"
       ansible.builtin.include_tasks: additional_disk_device.yml
@@ -252,7 +251,6 @@
         insertafter: EOF
         path: /etc/sudoers
         validate: 'visudo -cf %s'
-      when: ansible_os_family == 'RedHat'
 
     - name: Setup alternative K3S directory
       when:
