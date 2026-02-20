@@ -7,7 +7,6 @@
     #   - the installed version of K3s on the nodes is older than the requested version in ansible vars
     - name: Download artifact only if needed
       when:
-        - ansible_check_mode
         - not k3s_airgap
         - installed_k3s_version is undefined or ( installed_k3s_version is defined and installed_k3s_version is version(k3s_version, '<') )
       block:
@@ -82,6 +81,7 @@
         enabled: true
 
     - name: Disable Flannel checksum offload and persist via udev if needed
+      when: ansible_os_family == 'RedHat'
       block:
         - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Check if tx-checksum-ip-generic is already off on flannel.1"
           ansible.builtin.command:

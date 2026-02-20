@@ -43,7 +43,7 @@ spec:
   # k3sInitServer: true
   # k3sHAMode: true
   # k3sPrefixSecretRef: k3s-cluster
-  # k3sVersion: "v1.31.9+k3s1"
+  # k3sVersion: "v1.34.4+k3s1"
   #   This is now an inner yaml file. Maintain the indentation.
   #   YAML here will be placed as the content of /etc/rancher/k3s/config.yaml
   #   See https://docs.k3s.io/installation/configuration#configuration-file

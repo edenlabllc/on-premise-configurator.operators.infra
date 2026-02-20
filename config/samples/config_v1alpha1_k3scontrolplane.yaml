@@ -9,6 +9,6 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: k3scontrolplane-sample
 spec:
-  k3sVersion: "v1.31.9+k3s1"
+  k3sVersion: "v1.34.4+k3s1"
   k3sPrefixSecretRef: k3s-cluster
   k3sHAMode: true
