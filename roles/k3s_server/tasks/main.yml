@@ -125,7 +125,7 @@
         - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Wait for kubeconfig to exist [server]"
           ansible.builtin.wait_for:
             path: /etc/rancher/k3s/k3s.yaml
-            timeout: 120
+            timeout: 60
 
         - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - Read K3S kubeconfig from local file"
           ansible.builtin.slurp:

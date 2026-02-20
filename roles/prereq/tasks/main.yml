@@ -111,6 +111,15 @@
             permanent: true
             immediate: true
 
+        - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - If firewalld enabled, open K3s supervisor port (HA)"
+          when: k3s_role == 'server'
+          ansible.posix.firewalld:
+            port: "9345/tcp"
+            zone: internal
+            state: enabled
+            permanent: true
+            immediate: true
+
         - name: "Running on: {{ hostname }} with IP: {{ ansible_host }} - If firewalld enabled, open inter-node ports"
           ansible.posix.firewalld:
             port: "{{ item }}"
