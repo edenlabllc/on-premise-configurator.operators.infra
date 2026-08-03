@@ -7,7 +7,6 @@
     new_phase: "Destroying"
     expected_previous_phase: ["Provisioned", "Failed"]
     new_message: "Destroying K3S control plane and cleaning up cluster resources"
-    new_ready_status: false
     new_initialized: false
   delegate_to: localhost
   run_once: true

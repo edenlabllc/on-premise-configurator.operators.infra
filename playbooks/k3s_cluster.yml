@@ -37,12 +37,12 @@
               Not all K3SRemoteMachine resources are ready.
               Resources not ready: {{
                 k3s_remote_machines.resources | default([])
-                | selectattr('status.ready', 'defined')
-                | rejectattr('status.ready', 'equalto', true)
-                | map(attribute='metadata.name')
-                | list
+                | json_query('[?status.initialization.provisioned!=`true`].metadata.name')
               }}
-          when: k3s_remote_machines.resources | default([]) | selectattr('status.ready', 'equalto', false) | list | length > 0
+          when: >
+            (k3s_remote_machines.resources | default([])
+             | json_query('[?status.initialization.provisioned!=`true`]')
+             | length) > 0
 
         - name: K3S cluster control plane not ready
           debug:
@@ -50,12 +50,12 @@
               Not all K3SControlPlane resources are ready.
               Resources not ready: {{
                 k3s_control_plane.resources | default([])
-                | selectattr('status.ready', 'defined')
-                | rejectattr('status.ready', 'equalto', true)
-                | map(attribute='metadata.name')
-                | list
+                | json_query('[?status.initialization.controlPlaneInitialized!=`true`].metadata.name')
               }}
-          when: k3s_control_plane.resources | default([]) | selectattr('status.ready', 'equalto', false) | list | length > 0
+          when: >
+            (k3s_control_plane.resources | default([])
+             | json_query('[?status.initialization.controlPlaneInitialized!=`true`]')
+             | length) > 0
 
         - name: Set phase to "Failed". K3SCluster resource
           ansible.builtin.import_role:
@@ -67,8 +67,8 @@
             new_message: "Validation failed: some cluster components are not ready"
             new_ready_status: false
           when:
-            - k3s_remote_machines.resources | default([]) | selectattr('status.ready', 'equalto', false) | list | length > 0
-            - k3s_control_plane.resources | default([]) | selectattr('status.ready', 'equalto', false) | list | length > 0
+            - (k3s_remote_machines.resources | default([]) | json_query('[?status.initialization.provisioned!=`true`]') | length) > 0
+            - (k3s_control_plane.resources | default([]) | json_query('[?status.initialization.controlPlaneInitialized!=`true`]') | length) > 0
 
         - name: Set phase to "Provisioned". K3SCluster resource
           ansible.builtin.import_role:
@@ -80,5 +80,5 @@
             new_message: "All K3S cluster components are ready"
             new_ready_status: true
           when:
-            - k3s_remote_machines.resources | default([]) | selectattr('status.ready', 'equalto', false) | list | length == 0
-            - k3s_control_plane.resources | default([]) | selectattr('status.ready', 'equalto', false) | list | length == 0
+            - (k3s_remote_machines.resources | default([]) | json_query('[?status.initialization.provisioned!=`true`]') | length) == 0
+            - (k3s_control_plane.resources | default([]) | json_query('[?status.initialization.controlPlaneInitialized!=`true`]') | length) == 0

@@ -19,12 +19,9 @@ spec:
       - name: PHASE
         type: string
         jsonPath: .status.phase
-      - name: READY
-        type: string
-        jsonPath: .status.ready
       - name: INITIALIZED
         type: string
-        jsonPath: .status.initialized
+        jsonPath: .status.initialization.controlPlaneInitialized
       - name: VERSION
         type: string
         jsonPath: .spec.k3sVersion
