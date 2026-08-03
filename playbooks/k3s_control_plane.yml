@@ -13,7 +13,6 @@
             new_phase: "Provisioning"
             expected_previous_phase: ["", "Failed"]
             new_message: "Verifying K3S control plane nodes status"
-            new_ready_status: false
             new_initialized: false
 
         - name: Retrieve K3S kubeconfig from secret
@@ -70,7 +69,6 @@
             new_phase: "Failed"
             expected_previous_phase: [ "Provisioning", "Provisioned" ]
             new_message: "Expected K3S control plane nodes not found or not ready"
-            new_ready_status: false
             new_initialized: false
           when: >
             not (
@@ -86,7 +84,6 @@
             new_phase: "Provisioned"
             expected_previous_phase: ["Failed", "Provisioning"]
             new_message: "K3S control plane nodes are healthy"
-            new_ready_status: true
             new_initialized: true
           when: >
             (

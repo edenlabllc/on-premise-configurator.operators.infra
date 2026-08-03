@@ -19,9 +19,9 @@ spec:
     - name: PHASE
       type: string
       jsonPath: .status.phase
-    - name: READY
+    - name: PROVISIONED
       type: string
-      jsonPath: .status.ready
+      jsonPath: .status.initialization.provisioned
     - name: USER
       type: string
       jsonPath: .spec.sshUser
